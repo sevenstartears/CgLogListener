@@ -39,7 +39,8 @@
             this.txtCgLogPath = new System.Windows.Forms.TextBox();
             this.btnSelectLogPath = new System.Windows.Forms.Button();
             this.panel1 = new System.Windows.Forms.Panel();
-            this.checkBox1 = new System.Windows.Forms.CheckBox();
+            this.checkTelegram = new System.Windows.Forms.CheckBox();
+            this.checkDiscord = new System.Windows.Forms.CheckBox();
             this.cgLogListenerTrackBar = new CgLogListener.CgLogListenerTrackBar();
             this.cgLogListenerSettingCheckBox1 = new CgLogListener.CgLogListenerCheckBox();
             this.cgLogListenerCheckBox6 = new CgLogListener.CgLogListenerCheckBox();
@@ -61,10 +62,10 @@
             // 
             // notifyIcon
             // 
-            this.notifyIcon.BalloonTipTitle = "魔力Log監視";
+            this.notifyIcon.BalloonTipTitle = "Xgログ監視";
             this.notifyIcon.ContextMenuStrip = this.notifyIconContextMenu;
             this.notifyIcon.Icon = ((System.Drawing.Icon)(resources.GetObject("notifyIcon.Icon")));
-            this.notifyIcon.Text = "魔力Log監視";
+            this.notifyIcon.Text = "Xgログ監視";
             this.notifyIcon.Visible = true;
             this.notifyIcon.DoubleClick += new System.EventHandler(this.NotifyIcon_DoubleClick);
             // 
@@ -84,7 +85,7 @@
             // 
             this.toolOpen.Name = "toolOpen";
             this.toolOpen.Size = new System.Drawing.Size(85, 22);
-            this.toolOpen.Text = "開啟";
+            this.toolOpen.Text = "起動";
             this.toolOpen.Click += new System.EventHandler(this.ToolOpen_Click);
             // 
             // toolMinsize
@@ -103,7 +104,7 @@
             // 
             this.toolExit.Name = "toolExit";
             this.toolExit.Size = new System.Drawing.Size(85, 22);
-            this.toolExit.Text = "結束";
+            this.toolExit.Text = "終了";
             this.toolExit.Click += new System.EventHandler(this.ToolExit_Click);
             // 
             // txtCgLogPath
@@ -122,13 +123,14 @@
             this.btnSelectLogPath.Name = "btnSelectLogPath";
             this.btnSelectLogPath.Size = new System.Drawing.Size(53, 22);
             this.btnSelectLogPath.TabIndex = 2;
-            this.btnSelectLogPath.Text = "選擇";
+            this.btnSelectLogPath.Text = "選択";
             this.btnSelectLogPath.UseVisualStyleBackColor = true;
             this.btnSelectLogPath.Click += new System.EventHandler(this.BtnSelectLogPath_Click);
             // 
             // panel1
             // 
-            this.panel1.Controls.Add(this.checkBox1);
+            this.panel1.Controls.Add(this.checkTelegram);
+            this.panel1.Controls.Add(this.checkDiscord);
             this.panel1.Controls.Add(this.cgLogListenerTrackBar);
             this.panel1.Controls.Add(this.cgLogListenerSettingCheckBox1);
             this.panel1.Controls.Add(this.cgLogListenerCheckBox6);
@@ -144,18 +146,28 @@
             this.panel1.Location = new System.Drawing.Point(11, 38);
             this.panel1.Margin = new System.Windows.Forms.Padding(2);
             this.panel1.Name = "panel1";
-            this.panel1.Size = new System.Drawing.Size(276, 255);
+            this.panel1.Size = new System.Drawing.Size(328, 267);
             this.panel1.TabIndex = 6;
             // 
-            // checkBox1
+            // checkTelegram
             // 
-            this.checkBox1.AutoSize = true;
-            this.checkBox1.Location = new System.Drawing.Point(2, 230);
-            this.checkBox1.Name = "checkBox1";
-            this.checkBox1.Size = new System.Drawing.Size(93, 16);
-            this.checkBox1.TabIndex = 13;
-            this.checkBox1.Text = "Custom Notify";
-            this.checkBox1.UseVisualStyleBackColor = true;
+            this.checkTelegram.AutoSize = true;
+            this.checkTelegram.Location = new System.Drawing.Point(2, 230);
+            this.checkTelegram.Name = "checkBox1";
+            this.checkTelegram.Size = new System.Drawing.Size(93, 16);
+            this.checkTelegram.TabIndex = 13;
+            this.checkTelegram.Text = "Telegramに送信";
+            this.checkTelegram.UseVisualStyleBackColor = true;
+            // 
+            // checkDiscord
+            // 
+            this.checkDiscord.AutoSize = true;
+            this.checkDiscord.Location = new System.Drawing.Point(2, 248);
+            this.checkDiscord.Name = "checkBox1";
+            this.checkDiscord.Size = new System.Drawing.Size(93, 16);
+            this.checkDiscord.TabIndex = 14;
+            this.checkDiscord.Text = "Discordに送信";
+            this.checkDiscord.UseVisualStyleBackColor = true;
             // 
             // cgLogListenerTrackBar
             // 
@@ -177,7 +189,7 @@
             this.cgLogListenerSettingCheckBox1.RegexPattern = null;
             this.cgLogListenerSettingCheckBox1.Size = new System.Drawing.Size(72, 16);
             this.cgLogListenerSettingCheckBox1.TabIndex = 8;
-            this.cgLogListenerSettingCheckBox1.Text = "播放音效";
+            this.cgLogListenerSettingCheckBox1.Text = "SE再生";
             this.cgLogListenerSettingCheckBox1.UseVisualStyleBackColor = true;
             // 
             // cgLogListenerCheckBox6
@@ -189,7 +201,7 @@
             this.cgLogListenerCheckBox6.RegexPattern = "你感覺到一股不可思議的力量，而『.*』好像快(要?)消失了。";
             this.cgLogListenerCheckBox6.Size = new System.Drawing.Size(96, 16);
             this.cgLogListenerCheckBox6.TabIndex = 8;
-            this.cgLogListenerCheckBox6.Text = "迷宮重組通知";
+            this.cgLogListenerCheckBox6.Text = "ダンジョン再構築通知";
             this.cgLogListenerCheckBox6.UseVisualStyleBackColor = true;
             // 
             // cgLogListenerCheckBox5
@@ -201,7 +213,7 @@
             this.cgLogListenerCheckBox5.RegexPattern = "您順利賣掉了一個.*，(收入|獲得).*魔幣！";
             this.cgLogListenerCheckBox5.Size = new System.Drawing.Size(96, 16);
             this.cgLogListenerCheckBox5.TabIndex = 8;
-            this.cgLogListenerCheckBox5.Text = "擺攤售出通知";
+            this.cgLogListenerCheckBox5.Text = "露店販売通知";
             this.cgLogListenerCheckBox5.UseVisualStyleBackColor = true;
             // 
             // cgLogListenerCheckBox4
@@ -213,7 +225,7 @@
             this.cgLogListenerCheckBox4.RegexPattern = "加入了(你|您)的隊伍。";
             this.cgLogListenerCheckBox4.Size = new System.Drawing.Size(108, 16);
             this.cgLogListenerCheckBox4.TabIndex = 8;
-            this.cgLogListenerCheckBox4.Text = "被加入隊伍通知";
+            this.cgLogListenerCheckBox4.Text = "パーティ加入通知";
             this.cgLogListenerCheckBox4.UseVisualStyleBackColor = true;
             // 
             // cgLogListenerCheckBox3
@@ -225,23 +237,23 @@
             this.cgLogListenerCheckBox3.RegexPattern = "魔力不足。";
             this.cgLogListenerCheckBox3.Size = new System.Drawing.Size(96, 16);
             this.cgLogListenerCheckBox3.TabIndex = 8;
-            this.cgLogListenerCheckBox3.Text = "魔力不足通知";
+            this.cgLogListenerCheckBox3.Text = "FP切れ通知";
             this.cgLogListenerCheckBox3.UseVisualStyleBackColor = true;
             // 
             // label1
             // 
             this.label1.AutoSize = true;
-            this.label1.Location = new System.Drawing.Point(126, 2);
+            this.label1.Location = new System.Drawing.Point(166, 2);
             this.label1.Name = "label1";
             this.label1.Size = new System.Drawing.Size(65, 12);
             this.label1.TabIndex = 11;
-            this.label1.Text = "自訂關鍵字";
+            this.label1.Text = "カスタマイズキーワード";
             // 
             // cgLogListenerListBox
             // 
             this.cgLogListenerListBox.FormattingEnabled = true;
             this.cgLogListenerListBox.ItemHeight = 12;
-            this.cgLogListenerListBox.Location = new System.Drawing.Point(127, 20);
+            this.cgLogListenerListBox.Location = new System.Drawing.Point(167, 20);
             this.cgLogListenerListBox.Margin = new System.Windows.Forms.Padding(2, 3, 2, 3);
             this.cgLogListenerListBox.Name = "cgLogListenerListBox";
             this.cgLogListenerListBox.NotifyIcon = this.notifyIcon;
@@ -250,23 +262,23 @@
             // 
             // btnDelCus
             // 
-            this.btnDelCus.Location = new System.Drawing.Point(178, 181);
+            this.btnDelCus.Location = new System.Drawing.Point(218, 181);
             this.btnDelCus.Margin = new System.Windows.Forms.Padding(2);
             this.btnDelCus.Name = "btnDelCus";
             this.btnDelCus.Size = new System.Drawing.Size(47, 22);
             this.btnDelCus.TabIndex = 10;
-            this.btnDelCus.Text = "移除";
+            this.btnDelCus.Text = "削除";
             this.btnDelCus.UseVisualStyleBackColor = true;
             this.btnDelCus.Click += new System.EventHandler(this.BtnDelCus_Click);
             // 
             // btnAddCus
             // 
-            this.btnAddCus.Location = new System.Drawing.Point(127, 181);
+            this.btnAddCus.Location = new System.Drawing.Point(167, 181);
             this.btnAddCus.Margin = new System.Windows.Forms.Padding(2);
             this.btnAddCus.Name = "btnAddCus";
             this.btnAddCus.Size = new System.Drawing.Size(47, 22);
             this.btnAddCus.TabIndex = 9;
-            this.btnAddCus.Text = "增加";
+            this.btnAddCus.Text = "追加";
             this.btnAddCus.UseVisualStyleBackColor = true;
             this.btnAddCus.Click += new System.EventHandler(this.BtnAddCus_Click);
             // 
@@ -280,7 +292,7 @@
             this.cgLogListenerCheckBox2.RegexPattern = "物品欄沒有空位。";
             this.cgLogListenerCheckBox2.Size = new System.Drawing.Size(84, 16);
             this.cgLogListenerCheckBox2.TabIndex = 1;
-            this.cgLogListenerCheckBox2.Text = "道具滿通知";
+            this.cgLogListenerCheckBox2.Text = "カバン空きなし通知";
             this.cgLogListenerCheckBox2.UseVisualStyleBackColor = true;
             // 
             // cgLogListenerCheckBox1
@@ -293,18 +305,18 @@
             this.cgLogListenerCheckBox1.RegexPattern = "在工作時不小心受傷了。";
             this.cgLogListenerCheckBox1.Size = new System.Drawing.Size(96, 16);
             this.cgLogListenerCheckBox1.TabIndex = 1;
-            this.cgLogListenerCheckBox1.Text = "採集受傷通知";
+            this.cgLogListenerCheckBox1.Text = "採集怪我通知";
             this.cgLogListenerCheckBox1.UseVisualStyleBackColor = true;
             // 
             // btnExit
             // 
             this.btnExit.Anchor = System.Windows.Forms.AnchorStyles.Bottom;
-            this.btnExit.Location = new System.Drawing.Point(198, 300);
+            this.btnExit.Location = new System.Drawing.Point(198, 305);
             this.btnExit.Margin = new System.Windows.Forms.Padding(2);
             this.btnExit.Name = "btnExit";
             this.btnExit.Size = new System.Drawing.Size(89, 22);
             this.btnExit.TabIndex = 7;
-            this.btnExit.Text = "結束程式";
+            this.btnExit.Text = "終了";
             this.btnExit.UseVisualStyleBackColor = true;
             this.btnExit.Click += new System.EventHandler(this.BtnExit_Click);
             // 
@@ -316,26 +328,26 @@
             this.linkLabel1.Size = new System.Drawing.Size(65, 12);
             this.linkLabel1.TabIndex = 7;
             this.linkLabel1.TabStop = true;
-            this.linkLabel1.Text = "關於本程式";
+            this.linkLabel1.Text = "本ソフトに関して";
             this.linkLabel1.LinkClicked += new System.Windows.Forms.LinkLabelLinkClickedEventHandler(this.LinkLabel1_LinkClicked);
             // 
             // FormMain
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 12F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(298, 333);
+            this.ClientSize = new System.Drawing.Size(350, 333);
             this.Controls.Add(this.linkLabel1);
             this.Controls.Add(this.panel1);
             this.Controls.Add(this.btnSelectLogPath);
             this.Controls.Add(this.txtCgLogPath);
             this.Controls.Add(this.btnExit);
-            this.Font = new System.Drawing.Font("新細明體", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.Font = new System.Drawing.Font("MS Gothic", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedDialog;
             this.Margin = new System.Windows.Forms.Padding(2, 3, 2, 3);
             this.MaximizeBox = false;
             this.Name = "FormMain";
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
-            this.Text = "魔力Log監視";
+            this.Text = "Xgログ監視";
             this.MinimumSizeChanged += new System.EventHandler(this.FormMain_MinimumSizeChanged);
             this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.FormMain_FormClosing);
             this.Load += new System.EventHandler(this.FrmMain_Load);
@@ -374,7 +386,8 @@
         private CgLogListenerCheckBox cgLogListenerSettingCheckBox1;
         private CgLogListenerCheckBox cgLogListenerCheckBox6;
         private CgLogListenerTrackBar cgLogListenerTrackBar;
-        private System.Windows.Forms.CheckBox checkBox1;
+        private System.Windows.Forms.CheckBox checkTelegram;
+        private System.Windows.Forms.CheckBox checkDiscord;
     }
 }
 

@@ -16,8 +16,7 @@ namespace CgLogListener
         const string settingsStandardTipsSection = "standard tips";
         const string custmizeFileName = "custmize.dat";
 
-        public bool CustomNotify { get; private set; }
-        public string CustomNotifier { get; private set; }
+        public List<FormMain.CustomNotifyType> CustomNotifyTypes { get; private set; } = new List<FormMain.CustomNotifyType>();
         public bool PlaySound { get; private set; }
         public int SoundVol { get; private set; }
         public string CgLogPath { get; private set; }
@@ -56,8 +55,12 @@ namespace CgLogListener
             CgLogPath = baseData[nameof(CgLogPath)];
             PlaySound = baseData[nameof(PlaySound)] == "1";
             SoundVol = int.Parse(baseData[nameof(SoundVol)]);
-            CustomNotify = baseData[nameof(CustomNotify)] == "1";
-            CustomNotifier = baseData[nameof(CustomNotifier)];
+            CustomNotifyTypes = baseData[nameof(CustomNotifyTypes)]
+                .Split(',')
+                .Select(s =>
+                    Enum.TryParse(s, out FormMain.CustomNotifyType result) ? result : FormMain.CustomNotifyType.None)
+                .Where(t => t != FormMain.CustomNotifyType.None)
+                .ToList();
 
             var standardTipData = iniData[settingsStandardTipsSection];
             foreach (var kd in standardTipData)
@@ -81,7 +84,7 @@ namespace CgLogListener
             baseSection[nameof(CgLogPath)] = string.Empty;
             baseSection[nameof(PlaySound)] = "1";
             baseSection[nameof(SoundVol)] = "5";
-            baseSection[nameof(CustomNotify)] = "0";
+            baseSection[nameof(CustomNotifyTypes)] = string.Empty;
 
             var fileIniDataParser = new FileIniDataParser();
             fileIniDataParser.WriteFile(settingsFileName, iniData);
@@ -96,8 +99,7 @@ namespace CgLogListener
             baseSection[nameof(CgLogPath)] = CgLogPath;
             baseSection[nameof(PlaySound)] = PlaySound ? "1" : "0";
             baseSection[nameof(SoundVol)] = SoundVol.ToString();
-            baseSection[nameof(CustomNotify)] = CustomNotify ? "1" : "0";
-            baseSection[nameof(CustomNotifier)] = CustomNotifier;
+            baseSection[nameof(CustomNotifyTypes)] = string.Join(",", CustomNotifyTypes.Select(t => t.ToString()));
 
             var standardTipData = iniData[settingsStandardTipsSection];
             foreach (var kv in StandardTips)
@@ -146,15 +148,23 @@ namespace CgLogListener
             UpdateConfig();
         }
 
-        internal void SetCustomNotifier(string value)
+        internal void SetCustomNotify(FormMain.CustomNotifyType notifyType)
         {
-            CustomNotifier = value;
+            if (CustomNotifyTypes.Contains(notifyType))
+            {
+                return;
+            }
+            CustomNotifyTypes.Add(notifyType);
             UpdateConfig();
         }
-
-        internal void SetCustomNotify(bool value)
+        
+        internal void RemoveCustomNotify(FormMain.CustomNotifyType notifyType)
         {
-            CustomNotify = value;
+            if (!CustomNotifyTypes.Contains(notifyType))
+            {
+                return;
+            }
+            CustomNotifyTypes.Remove(notifyType);
             UpdateConfig();
         }
     }

@@ -12,7 +12,16 @@ namespace CgLogListener
     {
         private Settings settings;
         private CgLogHandler watcher;
+#if WINDOWS
         private readonly MediaPlayer mp = new MediaPlayer();
+#endif
+        
+        public enum CustomNotifyType
+        {
+            None,
+            Telegram,
+            Discord
+        }
 
         public FormMain()
         {
@@ -45,7 +54,7 @@ namespace CgLogListener
             {
                 // the dir path invalid, set to default and exit
                 settings.SetCgLogPath(string.Empty);
-                MessageBox.Show(this, "設定檔路徑錯誤, 請重新啟動", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show(this, "Xgが見つかりません、再起動してください", "エラー", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 this.Close();
                 return;
             }
@@ -58,9 +67,6 @@ namespace CgLogListener
             // set playsound vol
             cgLogListenerTrackBar.Value = settings.SoundVol;
 
-            // set line notify
-            checkBox1.Checked = settings.CustomNotify;
-
             // set default tips check
             foreach (var chk in panel1.Controls.OfType<CgLogListenerCheckBox>())
             {
@@ -70,6 +76,11 @@ namespace CgLogListener
                 settings.StandardTips.TryGetValue(chk.NameInSetting, out bool isEnable);
                 chk.Checked = isEnable;
             }
+            
+            // set custom notify type
+            checkTelegram.Checked = settings.CustomNotifyTypes.Contains(CustomNotifyType.Telegram);
+            checkDiscord.Checked = settings.CustomNotifyTypes.Contains(CustomNotifyType.Discord);
+
 
             // set custom tips items
             settings.CustomizeTips
@@ -89,7 +100,8 @@ namespace CgLogListener
             cgLogListenerCheckBox6.CheckedChanged += CgLogListenerCheckBox_CheckedChanged;
             cgLogListenerSettingCheckBox1.CheckedChanged += CgLogListenerSettingCheckBox1_CheckedChanged;
             cgLogListenerTrackBar.ValueChanged += CgLogListenerTrackBar_ValueChanged;
-            checkBox1.CheckedChanged += CheckBox1_CheckedChanged;
+            checkTelegram.CheckedChanged += CheckTelegram_CheckedChanged;
+            checkDiscord.CheckedChanged += CheckDiscord_CheckedChanged;
         }
 
         private void CgLogListenerCheckBox_CheckedChanged(object sender, EventArgs e)
@@ -125,7 +137,7 @@ namespace CgLogListener
             var dialog = new FolderBrowserDialog()
             {
                 ShowNewFolderButton = false,
-                Description = @"請選擇魔力寶貝的目錄 (e.g. D:\CrossGate\)"
+                Description = @"Xgがインストールされているフォルダを選択してください (e.g. D:\CrossGate\)"
             };
 
             while (true)
@@ -141,7 +153,7 @@ namespace CgLogListener
                 {
                     if (!CgLogHandler.ValidationPath(dialog.SelectedPath))
                     {
-                        MessageBox.Show(this, "請選擇魔力寶貝的目錄", "錯誤的路徑", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        MessageBox.Show(this, "Xgがインストールされているフォルダを選択してください", "Xgが見つかりません", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                         continue;
                     }
 
@@ -171,20 +183,24 @@ namespace CgLogListener
                     {
                         Invoke((Action)delegate
                         {
+#if WINDOWS
                             mp.Stop();
                             mp.Open(new Uri(new FileInfo(soundName).FullName));
                             mp.Volume = settings.SoundVol / 10d;
                             mp.Play();
+#endif
                         });
                     }
 
-                    if (settings.CustomNotify)
+                    if (settings.CustomNotifyTypes.Any())
                     {
-                        foreach (var notifier in settings.CustomNotifier.Split(','))
+                        foreach (var notifierType in settings.CustomNotifyTypes)
                         {
                             try
                             {
-                                ProcessStartInfo p = new ProcessStartInfo(notifier, $"\"{log}\"")
+                                var notifier = $"{notifierType.ToString()}Notifier.exe";
+                                var path = Path.Combine(Directory.GetCurrentDirectory(), notifier);
+                                var p = new ProcessStartInfo(path, $"\"{log}\"")
                                 {
                                     WindowStyle = ProcessWindowStyle.Hidden,
                                     CreateNoWindow = true
@@ -225,18 +241,29 @@ namespace CgLogListener
             cgLogListenerListBox.Items.Remove(selectItem);
         }
 
-        private void CheckBox1_CheckedChanged(object sender, EventArgs e)
+        private void CheckTelegram_CheckedChanged(object sender, EventArgs e)
         {
-            if (checkBox1.Checked)
+            if (checkTelegram.Checked)
             {
-                FormCustomNotifierPrompt.ShowDialog(this, out string value);
-                settings.SetCustomNotify(true);
-                settings.SetCustomNotifier(value);
+                MessageBox.Show(this, "Telegramのtokenとchat_idはTelegramNotifier.iniに設定してください", "Telegram送信", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                settings.SetCustomNotify(CustomNotifyType.Telegram);
             }
             else
             {
-                settings.SetCustomNotify(false);
-                settings.SetCustomNotifier(string.Empty);
+                settings.RemoveCustomNotify(CustomNotifyType.Telegram);
+            }
+        }
+        
+        private void CheckDiscord_CheckedChanged(object sender, EventArgs e)
+        {
+            if (checkDiscord.Checked)
+            {
+                MessageBox.Show(this, "DiscordのWebhookUrlはDiscordNotifier.iniに設定してください", "Discord送信", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                settings.SetCustomNotify(CustomNotifyType.Discord);
+            }
+            else
+            {
+                settings.RemoveCustomNotify(CustomNotifyType.Discord);
             }
         }
 

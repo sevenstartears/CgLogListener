@@ -25,7 +25,7 @@ namespace CgLogListener
 
             if (false == createNew)
             {
-                MessageBox.Show("已經有正在執行的CgLogListener", "", MessageBoxButtons.OK, MessageBoxIcon.Stop);
+                MessageBox.Show("すでに起動中のCgLogListenerがあります", "", MessageBoxButtons.OK, MessageBoxIcon.Stop);
                 return;
             }
 

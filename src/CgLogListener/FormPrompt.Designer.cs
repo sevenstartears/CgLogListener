@@ -53,7 +53,7 @@
             this.label1.Name = "label1";
             this.label1.Size = new System.Drawing.Size(40, 15);
             this.label1.TabIndex = 1;
-            this.label1.Text = "關鍵字";
+            this.label1.Text = "キーワード";
             // 
             // txtValue
             // 
@@ -69,7 +69,7 @@
             this.btnCancel.Name = "btnCancel";
             this.btnCancel.Size = new System.Drawing.Size(57, 26);
             this.btnCancel.TabIndex = 4;
-            this.btnCancel.Text = "取消";
+            this.btnCancel.Text = "キャンセル";
             this.btnCancel.UseVisualStyleBackColor = true;
             this.btnCancel.Click += new System.EventHandler(this.btnCancel_Click);
             // 
@@ -80,7 +80,7 @@
             this.label2.Name = "label2";
             this.label2.Size = new System.Drawing.Size(95, 15);
             this.label2.TabIndex = 1;
-            this.label2.Text = "排除 (以逗號分隔)";
+            this.label2.Text = "除外（カンマ区切り）";
             // 
             // txtExp
             // 
