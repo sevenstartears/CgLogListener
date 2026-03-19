@@ -29,10 +29,13 @@ namespace CgLogListener
         readonly Dictionary<string, Task<string>> translationTasks = new Dictionary<string, Task<string>>(StringComparer.Ordinal);
         readonly Dictionary<TranslationProvider, ITranslationService> translationServices = new Dictionary<TranslationProvider, ITranslationService>();
         readonly DiscordWebhookNotifier discordNotifier = new DiscordWebhookNotifier();
+        readonly FoodCooldownTracker foodCooldownTracker = new FoodCooldownTracker();
+        readonly Button btnFoodTimer = new Button();
         readonly MediaPlayer mp = new MediaPlayer();
 
         Settings settings;
         CgLogHandler watcher;
+        FormFoodTimer foodTimerForm;
 
         public FormMain()
         {
@@ -47,9 +50,11 @@ namespace CgLogListener
 
             StyleButton(btnOpenSettings, true);
             StyleButton(btnClearLogs, false);
+            StyleButton(btnFoodTimer, false);
             InitializeCategoryFilterUi();
             ApplyLocalizedText();
             flowLogs.TranslateRequested += FlowLogs_TranslateRequested;
+            btnFoodTimer.Click += BtnFoodTimer_Click;
         }
 
         void FrmMain_Load(object sender, EventArgs e)
@@ -64,7 +69,7 @@ namespace CgLogListener
             }
             else
             {
-                ClearDisplayedLogs(clearHistory: true);
+                ClearDisplayedLogs(clearHistory: true, resetFoodTimers: true);
                 UpdateEmptyState();
             }
         }
@@ -78,6 +83,15 @@ namespace CgLogListener
         {
             panelToolbar.Height = 194;
             flowLogs.Padding = new Padding(0);
+            btnFoodTimer.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+            btnFoodTimer.Location = new Point(900, 65);
+            btnFoodTimer.Name = "btnFoodTimer";
+            btnFoodTimer.Size = new Size(160, 34);
+            btnFoodTimer.TabIndex = 8;
+            btnFoodTimer.Text = "お食事タイマー";
+            btnFoodTimer.UseVisualStyleBackColor = true;
+            panelToolbar.Controls.Add(btnFoodTimer);
+            btnClearLogs.Location = new Point(900, 106);
 
             lblCategoryFilter.AutoSize = true;
             lblCategoryFilter.ForeColor = Color.FromArgb(91, 102, 114);
@@ -164,6 +178,7 @@ namespace CgLogListener
             lblDedupLabel.Text = "まとめ秒数:";
             lblLogPath.Text = "ゲームフォルダ:";
             btnOpenSettings.Text = "表示と通知の設定";
+            btnFoodTimer.Text = "お食事タイマー";
             btnClearLogs.Text = "表示ログをクリア";
 
             toolOpen.Text = "表示";
@@ -204,7 +219,7 @@ namespace CgLogListener
         {
             var recentLogs = watcher.ReadRecentLogs(InitialRecentLogCount);
 
-            ClearDisplayedLogs(clearHistory: true);
+            ClearDisplayedLogs(clearHistory: true, resetFoodTimers: true);
             foreach (var log in recentLogs)
             {
                 AppendLog(log, allowNotification: false, storeHistory: true, refreshUi: false);
@@ -239,6 +254,8 @@ namespace CgLogListener
                     logHistory.RemoveRange(0, logHistory.Count - MaxRetainedLogs);
                 }
             }
+
+            foodCooldownTracker.TryRegister(log);
 
             var group = FindGroupToMerge(log);
             bool shouldRefreshVisible = false;
@@ -571,7 +588,7 @@ namespace CgLogListener
             {
                 watcher?.Dispose();
                 watcher = null;
-                ClearDisplayedLogs(clearHistory: true);
+                ClearDisplayedLogs(clearHistory: true, resetFoodTimers: true);
                 UpdateEmptyState();
                 return;
             }
@@ -591,12 +608,28 @@ namespace CgLogListener
             ClearDisplayedLogs(clearHistory: true);
         }
 
+        void BtnFoodTimer_Click(object sender, EventArgs e)
+        {
+            if (foodTimerForm == null || foodTimerForm.IsDisposed)
+            {
+                foodTimerForm = new FormFoodTimer(foodCooldownTracker);
+            }
+
+            if (!foodTimerForm.Visible)
+            {
+                foodTimerForm.Show(this);
+            }
+
+            foodTimerForm.WindowState = FormWindowState.Normal;
+            foodTimerForm.Activate();
+        }
+
         void FlowLogs_SizeChanged(object sender, EventArgs e)
         {
             flowLogs.RefreshLayoutMetrics();
         }
 
-        void ClearDisplayedLogs(bool clearHistory)
+        void ClearDisplayedLogs(bool clearHistory, bool resetFoodTimers = false)
         {
             displayedGroups.Clear();
             visibleGroups.Clear();
@@ -605,6 +638,11 @@ namespace CgLogListener
             if (clearHistory)
             {
                 logHistory.Clear();
+            }
+
+            if (resetFoodTimers)
+            {
+                foodCooldownTracker.Reset();
             }
 
             UpdateEmptyState();
@@ -725,6 +763,10 @@ namespace CgLogListener
         {
             watcher?.Dispose();
             notifyIcon?.Dispose();
+            if (foodTimerForm != null && !foodTimerForm.IsDisposed)
+            {
+                foodTimerForm.Close();
+            }
             foreach (var service in translationServices.Values.OfType<IDisposable>())
             {
                 service.Dispose();

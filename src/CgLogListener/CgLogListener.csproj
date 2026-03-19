@@ -77,11 +77,15 @@
     <Compile Include="DeepLTranslationService.cs" />
     <Compile Include="DisplayedLogGroup.cs" />
     <Compile Include="DiscordWebhookNotifier.cs" />
+    <Compile Include="FoodCooldownEntry.cs" />
+    <Compile Include="FoodCooldownTracker.cs" />
     <Compile Include="FormSettings.cs" />
+    <Compile Include="FormFoodTimer.cs" />
     <Compile Include="GoogleTranslationService.cs" />
     <Compile Include="ITranslationService.cs" />
     <Compile Include="LogCategoryPalette.cs" />
     <Compile Include="LogEntryControl.cs" />
+    <Compile Include="FoodTimerEntryControl.cs" />
     <Compile Include="LogLine.cs" />
     <Compile Include="NotificationPresets.cs" />
     <Compile Include="OpenAITranslationService.cs" />
