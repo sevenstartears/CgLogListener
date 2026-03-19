@@ -151,7 +151,7 @@ namespace CgLogListener
             this.btnClearLogs.Name = "btnClearLogs";
             this.btnClearLogs.Size = new System.Drawing.Size(160, 34);
             this.btnClearLogs.TabIndex = 7;
-            this.btnClearLogs.Text = "表示ログをクリア";
+            this.btnClearLogs.Text = "ログ保存";
             this.btnClearLogs.UseVisualStyleBackColor = true;
             this.btnClearLogs.Click += new System.EventHandler(this.BtnClearLogs_Click);
             // 

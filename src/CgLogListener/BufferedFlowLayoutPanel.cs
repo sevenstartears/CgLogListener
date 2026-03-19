@@ -8,6 +8,12 @@ using System.Windows.Forms;
 
 namespace CgLogListener
 {
+    public enum LogViewMode
+    {
+        Full,
+        Simple
+    }
+
     public class BufferedFlowLayoutPanel : ScrollableControl
     {
         static readonly Regex UrlRegex = new Regex(@"(?:https?://|www\.)[^\s]+", RegexOptions.Compiled | RegexOptions.IgnoreCase);
@@ -28,6 +34,10 @@ namespace CgLogListener
         const int ChipHeight = 23;
         const int ChipHorizontalPadding = 8;
         const int ContentBottomPadding = 8;
+        const int SimpleRowHeight = 52;
+        const int SimpleMessageRightPadding = 16;
+        const int SimpleExpandedTopPadding = 10;
+        const int SimpleExpandedBottomPadding = 10;
 
         readonly Font timeFont = new Font("Yu Gothic UI Semibold", 10F, FontStyle.Bold);
         readonly Font categoryFont = new Font("Yu Gothic UI", 8F, FontStyle.Bold);
@@ -35,14 +45,20 @@ namespace CgLogListener
         readonly Font messageFont = new Font("MingLiU", 11F, FontStyle.Bold, GraphicsUnit.Point, 136);
         readonly Font messageLinkFont = new Font("MingLiU", 11F, FontStyle.Bold | FontStyle.Underline, GraphicsUnit.Point, 136);
         readonly Font copyFont = new Font("Yu Gothic UI", 8.5F, FontStyle.Regular);
+        readonly Font simpleMessageFont = new Font("MingLiU", 10.5F, FontStyle.Bold, GraphicsUnit.Point, 136);
         readonly List<DisplayedLogGroup> entries = new List<DisplayedLogGroup>();
         readonly List<RowLayout> rowLayouts = new List<RowLayout>();
         readonly Dictionary<DisplayedLogGroup, int> rowIndices = new Dictionary<DisplayedLogGroup, int>();
         readonly List<InteractiveRegion> interactiveRegions = new List<InteractiveRegion>();
         readonly Size infiniteTextBox = new Size(int.MaxValue, int.MaxValue);
+        readonly ContextMenuStrip rowMenu = new ContextMenuStrip();
+        readonly ToolStripMenuItem menuTranslate = new ToolStripMenuItem();
+        readonly ToolStripMenuItem menuCopy = new ToolStripMenuItem();
 
         HoverState hoverState = HoverState.None;
         bool translationConfigured;
+        LogViewMode viewMode = LogViewMode.Full;
+        DisplayedLogGroup contextMenuEntry;
 
         public event EventHandler<TranslateRequestedEventArgs> TranslateRequested;
 
@@ -59,6 +75,28 @@ namespace CgLogListener
                 ControlStyles.ResizeRedraw |
                 ControlStyles.UserPaint,
                 true);
+
+            rowMenu.ShowImageMargin = false;
+            rowMenu.Items.AddRange(new ToolStripItem[] { menuTranslate, menuCopy });
+            menuTranslate.Click += MenuTranslate_Click;
+            menuCopy.Text = "コピー";
+            menuCopy.Click += MenuCopy_Click;
+        }
+
+        public LogViewMode ViewMode
+        {
+            get { return viewMode; }
+            set
+            {
+                if (viewMode == value)
+                {
+                    return;
+                }
+
+                viewMode = value;
+                hoverState = HoverState.None;
+                RefreshLayoutMetrics();
+            }
         }
 
         public void SetEntries(IReadOnlyList<DisplayedLogGroup> newEntries)
@@ -147,6 +185,8 @@ namespace CgLogListener
                 messageFont.Dispose();
                 messageLinkFont.Dispose();
                 copyFont.Dispose();
+                simpleMessageFont.Dispose();
+                rowMenu.Dispose();
             }
 
             base.Dispose(disposing);
@@ -180,13 +220,26 @@ namespace CgLogListener
                     break;
                 }
 
-                DrawRow(e.Graphics, row);
+                if (viewMode == LogViewMode.Simple)
+                {
+                    DrawSimpleRow(e.Graphics, row);
+                }
+                else
+                {
+                    DrawRow(e.Graphics, row);
+                }
             }
         }
 
         protected override void OnMouseMove(MouseEventArgs e)
         {
             base.OnMouseMove(e);
+
+            if (viewMode == LogViewMode.Simple)
+            {
+                Cursor = Cursors.Default;
+                return;
+            }
 
             var region = HitTest(e.Location);
             var nextState = region == null ? HoverState.None : new HoverState(region.Kind, region.Entry, region.Value);
@@ -220,6 +273,24 @@ namespace CgLogListener
         {
             base.OnMouseClick(e);
 
+            if (e.Button == MouseButtons.Right && viewMode == LogViewMode.Simple)
+            {
+                ShowRowMenu(e.Location);
+                return;
+            }
+
+            if (e.Button == MouseButtons.Left && viewMode == LogViewMode.Simple)
+            {
+                var row = FindRowAt(e.Location);
+                if (row != null && CanExpandSimpleRow(row))
+                {
+                    row.Entry.ToggleSimpleExpanded();
+                    RefreshEntry(row.Entry);
+                }
+
+                return;
+            }
+
             if (e.Button != MouseButtons.Left)
             {
                 return;
@@ -251,6 +322,40 @@ namespace CgLogListener
             Invalidate();
         }
 
+        void MenuTranslate_Click(object sender, EventArgs e)
+        {
+            if (contextMenuEntry == null || contextMenuEntry.TranslationState == TranslationState.InProgress)
+            {
+                return;
+            }
+
+            OnTranslateRequested(contextMenuEntry);
+        }
+
+        void MenuCopy_Click(object sender, EventArgs e)
+        {
+            if (contextMenuEntry == null)
+            {
+                return;
+            }
+
+            TryCopy(contextMenuEntry.DisplayLine);
+        }
+
+        void ShowRowMenu(Point location)
+        {
+            var row = FindRowAt(location);
+            if (row == null)
+            {
+                return;
+            }
+
+            contextMenuEntry = row.Entry;
+            menuTranslate.Text = GetTranslateButtonText(row.Entry);
+            menuTranslate.Enabled = row.Entry.TranslationState != TranslationState.InProgress;
+            rowMenu.Show(this, location);
+        }
+
         void RebuildLayouts()
         {
             rowLayouts.Clear();
@@ -280,6 +385,19 @@ namespace CgLogListener
         RowLayout CreateRowLayout(DisplayedLogGroup entry, int y)
         {
             int cardWidth = GetCardWidth();
+            if (viewMode == LogViewMode.Simple)
+            {
+                int simpleMessageWidth = Math.Max(220, cardWidth - AccentWidth - CardPaddingLeft - CardPaddingRight - SimpleMessageRightPadding);
+                int simpleHeight = SimpleRowHeight;
+                if (entry.IsExpandedInSimpleView && SimpleMessageNeedsExpansion(entry, simpleMessageWidth))
+                {
+                    int simpleLineCount = Math.Max(1, BuildWrappedLines(NormalizeSingleLine(entry.VisibleMessage), simpleMessageWidth, simpleMessageFont).Count);
+                    simpleHeight = Math.Max(SimpleRowHeight, SimpleExpandedTopPadding + (simpleLineCount * GetSimpleMessageLineHeight()) + SimpleExpandedBottomPadding);
+                }
+
+                return new RowLayout(entry, new Rectangle(0, y, cardWidth, simpleHeight), simpleMessageWidth, 0);
+            }
+
             int messageWidth = Math.Max(220, cardWidth - AccentWidth - CardPaddingLeft - CardPaddingRight);
             int lineCount = Math.Max(1, BuildWrappedLines(entry.VisibleMessage, messageWidth).Count);
             int messageHeight = lineCount * GetMessageLineHeight();
@@ -287,6 +405,81 @@ namespace CgLogListener
             int totalHeight = CardPaddingTop + headerHeight + HeaderBottomGap + messageHeight + CardPaddingBottom;
 
             return new RowLayout(entry, new Rectangle(0, y, cardWidth, totalHeight), messageWidth, headerHeight);
+        }
+
+        void DrawSimpleRow(Graphics graphics, RowLayout row)
+        {
+            var cardBounds = ToClientRectangle(row.Bounds);
+            var accentColor = LogCategoryPalette.GetAccentColor(row.Entry.Category);
+            var surfaceColor = LogCategoryPalette.GetSurfaceColor(row.Entry.Category);
+            var borderColor = ControlPaint.Light(accentColor);
+            var textColor = Color.FromArgb(41, 47, 54);
+
+            using (var backBrush = new SolidBrush(surfaceColor))
+            using (var accentBrush = new SolidBrush(accentColor))
+            using (var borderPen = new Pen(borderColor))
+            {
+                var outline = cardBounds;
+                outline.Width -= 1;
+                outline.Height -= 1;
+
+                graphics.FillRectangle(backBrush, cardBounds);
+                graphics.FillRectangle(accentBrush, new Rectangle(cardBounds.Left, cardBounds.Top, AccentWidth, cardBounds.Height));
+                graphics.DrawRectangle(borderPen, outline);
+
+                var textRect = new Rectangle(
+                    cardBounds.Left + AccentWidth + CardPaddingLeft,
+                    cardBounds.Top + (row.Entry.IsExpandedInSimpleView ? SimpleExpandedTopPadding : CardPaddingTop - 1),
+                    row.MessageWidth,
+                    row.Entry.IsExpandedInSimpleView
+                        ? cardBounds.Height - (SimpleExpandedTopPadding + SimpleExpandedBottomPadding)
+                        : cardBounds.Height - (CardPaddingTop * 2) + 4);
+
+                if (row.Entry.IsExpandedInSimpleView && CanExpandSimpleRow(row))
+                {
+                    DrawSimpleExpandedText(graphics, row, textRect, textColor);
+                }
+                else
+                {
+                    TextRenderer.DrawText(
+                        graphics,
+                        NormalizeSingleLine(row.Entry.VisibleMessage),
+                        simpleMessageFont,
+                        textRect,
+                        textColor,
+                        TextFormatFlags.NoPadding |
+                        TextFormatFlags.NoPrefix |
+                        TextFormatFlags.EndEllipsis |
+                        TextFormatFlags.VerticalCenter |
+                        TextFormatFlags.SingleLine);
+                }
+            }
+        }
+
+        void DrawSimpleExpandedText(Graphics graphics, RowLayout row, Rectangle bounds, Color color)
+        {
+            string message = NormalizeSingleLine(row.Entry.VisibleMessage);
+            var lines = BuildWrappedLines(message, bounds.Width, simpleMessageFont);
+            int lineHeight = GetSimpleMessageLineHeight();
+            int y = bounds.Top;
+
+            foreach (var line in lines)
+            {
+                string lineText = message.Substring(line.StartIndex, line.Length);
+                var lineRect = new Rectangle(bounds.Left, y, bounds.Width, lineHeight);
+                TextRenderer.DrawText(
+                    graphics,
+                    lineText,
+                    simpleMessageFont,
+                    lineRect,
+                    color,
+                    TextFormatFlags.NoPadding |
+                    TextFormatFlags.NoPrefix |
+                    TextFormatFlags.Left |
+                    TextFormatFlags.VerticalCenter |
+                    TextFormatFlags.SingleLine);
+                y += lineHeight;
+            }
         }
 
         void DrawRow(Graphics graphics, RowLayout row)
@@ -455,6 +648,11 @@ namespace CgLogListener
 
         List<WrappedLine> BuildWrappedLines(string text, int maxWidth)
         {
+            return BuildWrappedLines(text, maxWidth, messageFont);
+        }
+
+        List<WrappedLine> BuildWrappedLines(string text, int maxWidth, Font font)
+        {
             var lines = new List<WrappedLine>();
             if (string.IsNullOrEmpty(text))
             {
@@ -487,7 +685,7 @@ namespace CgLogListener
                 while (index < rawLineEnd)
                 {
                     int remainingLength = rawLineEnd - index;
-                    int length = FindFittingLength(text, index, rawLineEnd, maxWidth);
+                    int length = FindFittingLength(text, index, rawLineEnd, maxWidth, font);
                     int wrappedLength = length >= remainingLength
                         ? remainingLength
                         : AdjustWrapLength(text, index, length);
@@ -526,7 +724,7 @@ namespace CgLogListener
             return lines;
         }
 
-        int FindFittingLength(string text, int start, int lineEnd, int maxWidth)
+        int FindFittingLength(string text, int start, int lineEnd, int maxWidth, Font font)
         {
             int low = 1;
             int high = Math.Max(1, lineEnd - start);
@@ -536,7 +734,7 @@ namespace CgLogListener
             {
                 int mid = low + ((high - low) / 2);
                 string candidate = text.Substring(start, mid);
-                int width = MeasureText(candidate, messageFont).Width;
+                int width = MeasureText(candidate, font).Width;
 
                 if (width <= maxWidth)
                 {
@@ -568,6 +766,26 @@ namespace CgLogListener
             }
 
             return fittedLength;
+        }
+
+        string NormalizeSingleLine(string text)
+        {
+            if (string.IsNullOrWhiteSpace(text))
+            {
+                return string.Empty;
+            }
+
+            return text.Replace("\r", " ").Replace("\n", " ").Trim();
+        }
+
+        bool CanExpandSimpleRow(RowLayout row)
+        {
+            return row != null && SimpleMessageNeedsExpansion(row.Entry, row.MessageWidth);
+        }
+
+        bool SimpleMessageNeedsExpansion(DisplayedLogGroup entry, int width)
+        {
+            return MeasureText(NormalizeSingleLine(entry.VisibleMessage), simpleMessageFont).Width > width;
         }
 
         string GetTranslateButtonText(DisplayedLogGroup entry)
@@ -659,9 +877,16 @@ namespace CgLogListener
             return TextRenderer.MeasureText("測試", messageFont, infiniteTextBox, TextFormatFlags.NoPadding | TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine).Height;
         }
 
+        int GetSimpleMessageLineHeight()
+        {
+            return TextRenderer.MeasureText("測試", simpleMessageFont, infiniteTextBox, TextFormatFlags.NoPadding | TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine).Height;
+        }
+
         int GetCardWidth()
         {
-            return Math.Max(360, ClientSize.Width - 2);
+            int minWidth = viewMode == LogViewMode.Simple ? 120 : 360;
+            int scrollbarAllowance = viewMode == LogViewMode.Simple ? SystemInformation.VerticalScrollBarWidth + 4 : 2;
+            return Math.Max(minWidth, ClientSize.Width - scrollbarAllowance);
         }
 
         int GetScrollOffset()
@@ -702,6 +927,19 @@ namespace CgLogListener
                 if (interactiveRegions[i].Bounds.Contains(location))
                 {
                     return interactiveRegions[i];
+                }
+            }
+
+            return null;
+        }
+
+        RowLayout FindRowAt(Point location)
+        {
+            foreach (var row in rowLayouts)
+            {
+                if (ToClientRectangle(row.Bounds).Contains(location))
+                {
+                    return row;
                 }
             }
 

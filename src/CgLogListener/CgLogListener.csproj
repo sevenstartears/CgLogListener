@@ -81,6 +81,7 @@
     <Compile Include="FoodCooldownTracker.cs" />
     <Compile Include="FormSettings.cs" />
     <Compile Include="FormFoodTimer.cs" />
+    <Compile Include="FormSimpleView.cs" />
     <Compile Include="GoogleTranslationService.cs" />
     <Compile Include="ITranslationService.cs" />
     <Compile Include="LogCategoryPalette.cs" />

@@ -29,6 +29,7 @@ namespace CgLogListener
         public string TranslatedMessage { get; private set; }
         public TranslationState TranslationState { get; private set; }
         public bool IsShowingTranslation { get; private set; }
+        public bool IsExpandedInSimpleView { get; private set; }
         public string VisibleMessage => IsShowingTranslation && TranslationState == TranslationState.Ready && !string.IsNullOrWhiteSpace(TranslatedMessage)
             ? TranslatedMessage
             : Message;
@@ -67,6 +68,11 @@ namespace CgLogListener
             }
 
             IsShowingTranslation = !IsShowingTranslation;
+        }
+
+        public void ToggleSimpleExpanded()
+        {
+            IsExpandedInSimpleView = !IsExpandedInSimpleView;
         }
     }
 }

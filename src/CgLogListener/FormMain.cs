@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
 using System.Linq;
+using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
@@ -30,12 +31,15 @@ namespace CgLogListener
         readonly Dictionary<TranslationProvider, ITranslationService> translationServices = new Dictionary<TranslationProvider, ITranslationService>();
         readonly DiscordWebhookNotifier discordNotifier = new DiscordWebhookNotifier();
         readonly FoodCooldownTracker foodCooldownTracker = new FoodCooldownTracker();
+        readonly Button btnSimpleView = new Button();
         readonly Button btnFoodTimer = new Button();
         readonly MediaPlayer mp = new MediaPlayer();
 
         Settings settings;
         CgLogHandler watcher;
         FormFoodTimer foodTimerForm;
+        FormSimpleView simpleViewForm;
+        bool isShuttingDown;
 
         public FormMain()
         {
@@ -50,10 +54,12 @@ namespace CgLogListener
 
             StyleButton(btnOpenSettings, true);
             StyleButton(btnClearLogs, false);
+            StyleButton(btnSimpleView, false);
             StyleButton(btnFoodTimer, false);
             InitializeCategoryFilterUi();
             ApplyLocalizedText();
             flowLogs.TranslateRequested += FlowLogs_TranslateRequested;
+            btnSimpleView.Click += BtnSimpleView_Click;
             btnFoodTimer.Click += BtnFoodTimer_Click;
         }
 
@@ -81,7 +87,7 @@ namespace CgLogListener
 
         void InitializeCategoryFilterUi()
         {
-            panelToolbar.Height = 194;
+            panelToolbar.Height = 236;
             flowLogs.Padding = new Padding(0);
             btnFoodTimer.Anchor = AnchorStyles.Top | AnchorStyles.Right;
             btnFoodTimer.Location = new Point(900, 65);
@@ -91,16 +97,24 @@ namespace CgLogListener
             btnFoodTimer.Text = "お食事タイマー";
             btnFoodTimer.UseVisualStyleBackColor = true;
             panelToolbar.Controls.Add(btnFoodTimer);
-            btnClearLogs.Location = new Point(900, 106);
+            btnSimpleView.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+            btnSimpleView.Location = new Point(900, 106);
+            btnSimpleView.Name = "btnSimpleView";
+            btnSimpleView.Size = new Size(160, 34);
+            btnSimpleView.TabIndex = 9;
+            btnSimpleView.Text = "シンプルビュー";
+            btnSimpleView.UseVisualStyleBackColor = true;
+            panelToolbar.Controls.Add(btnSimpleView);
+            btnClearLogs.Location = new Point(900, 147);
 
             lblCategoryFilter.AutoSize = true;
             lblCategoryFilter.ForeColor = Color.FromArgb(91, 102, 114);
-            lblCategoryFilter.Location = new Point(28, 121);
+            lblCategoryFilter.Location = new Point(28, 162);
 
             flowCategoryFilters.AutoSize = false;
             flowCategoryFilters.AutoScroll = false;
             flowCategoryFilters.WrapContents = false;
-            flowCategoryFilters.Location = new Point(102, 106);
+            flowCategoryFilters.Location = new Point(102, 147);
             flowCategoryFilters.Size = new Size(panelToolbar.ClientSize.Width - 126, 48);
             flowCategoryFilters.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
             flowCategoryFilters.Margin = new Padding(0);
@@ -179,7 +193,7 @@ namespace CgLogListener
             lblLogPath.Text = "ゲームフォルダ:";
             btnOpenSettings.Text = "表示と通知の設定";
             btnFoodTimer.Text = "お食事タイマー";
-            btnClearLogs.Text = "表示ログをクリア";
+            btnClearLogs.Text = "ログ保存";
 
             toolOpen.Text = "表示";
             toolMinsize.Text = "最小化";
@@ -268,6 +282,7 @@ namespace CgLogListener
                 if (refreshUi && IsCategoryVisible(group.Category))
                 {
                     flowLogs.RefreshEntry(group);
+                    RefreshSimpleViewEntry(group);
                     shouldScrollToLatest = true;
                 }
             }
@@ -287,6 +302,10 @@ namespace CgLogListener
                     {
                         visibleGroups.Add(newGroup);
                         flowLogs.AppendEntry(newGroup);
+                        if (simpleViewForm != null && !simpleViewForm.IsDisposed)
+                        {
+                            simpleViewForm.AppendEntry(newGroup, scrollToLatest: true);
+                        }
                         shouldScrollToLatest = true;
                     }
                 }
@@ -311,6 +330,10 @@ namespace CgLogListener
                 if (shouldScrollToLatest)
                 {
                     ScrollToLatestVisibleLog();
+                    if (simpleViewForm != null && !simpleViewForm.IsDisposed)
+                    {
+                        simpleViewForm.ScrollToEnd();
+                    }
                 }
 
                 UpdateEmptyState();
@@ -348,6 +371,7 @@ namespace CgLogListener
             visibleGroups.Clear();
             visibleGroups.AddRange(displayedGroups.Where(group => IsCategoryVisible(group.Category)));
             flowLogs.SetEntries(visibleGroups);
+            SyncSimpleView(scrollToLatest);
 
             if (scrollToLatest)
             {
@@ -355,6 +379,27 @@ namespace CgLogListener
             }
 
             UpdateEmptyState();
+        }
+
+        void SyncSimpleView(bool scrollToLatest)
+        {
+            if (simpleViewForm == null || simpleViewForm.IsDisposed)
+            {
+                return;
+            }
+
+            simpleViewForm.TranslationConfigured = HasTranslationCredentials();
+            simpleViewForm.SetEntries(visibleGroups, scrollToLatest);
+        }
+
+        void RefreshSimpleViewEntry(DisplayedLogGroup entry)
+        {
+            if (simpleViewForm == null || simpleViewForm.IsDisposed)
+            {
+                return;
+            }
+
+            simpleViewForm.RefreshEntry(entry);
         }
 
         async void FlowLogs_TranslateRequested(object sender, BufferedFlowLayoutPanel.TranslateRequestedEventArgs e)
@@ -369,6 +414,7 @@ namespace CgLogListener
             {
                 entry.ToggleTranslation();
                 flowLogs.RefreshEntry(entry);
+                RefreshSimpleViewEntry(entry);
                 return;
             }
 
@@ -389,11 +435,13 @@ namespace CgLogListener
             {
                 entry.SetTranslation(translatedMessage);
                 flowLogs.RefreshEntry(entry);
+                RefreshSimpleViewEntry(entry);
                 return;
             }
 
             entry.StartTranslation();
             flowLogs.RefreshEntry(entry);
+            RefreshSimpleViewEntry(entry);
 
             try
             {
@@ -407,6 +455,7 @@ namespace CgLogListener
             }
 
             flowLogs.RefreshEntry(entry);
+            RefreshSimpleViewEntry(entry);
         }
 
         Task<string> GetOrCreateTranslationTask(string message)
@@ -608,7 +657,18 @@ namespace CgLogListener
 
         void BtnClearLogs_Click(object sender, EventArgs e)
         {
-            ClearDisplayedLogs(clearHistory: true);
+            SaveVisibleLogs();
+        }
+
+        void BtnSimpleView_Click(object sender, EventArgs e)
+        {
+            EnsureSimpleViewForm();
+            Hide();
+            simpleViewForm.Show();
+            simpleViewForm.WindowState = FormWindowState.Normal;
+            SyncSimpleView(scrollToLatest: true);
+            simpleViewForm.ScrollToEndDeferred();
+            simpleViewForm.Activate();
         }
 
         void BtnFoodTimer_Click(object sender, EventArgs e)
@@ -627,9 +687,53 @@ namespace CgLogListener
             foodTimerForm.Activate();
         }
 
+        void EnsureSimpleViewForm()
+        {
+            if (simpleViewForm != null && !simpleViewForm.IsDisposed)
+            {
+                return;
+            }
+
+            simpleViewForm = new FormSimpleView();
+            simpleViewForm.TranslateRequested += FlowLogs_TranslateRequested;
+            simpleViewForm.ReturnRequested += SimpleViewForm_ReturnRequested;
+            simpleViewForm.FormClosed += SimpleViewForm_FormClosed;
+            simpleViewForm.TranslationConfigured = HasTranslationCredentials();
+        }
+
+        void SimpleViewForm_ReturnRequested(object sender, EventArgs e)
+        {
+            ReturnToFullView();
+        }
+
+        void SimpleViewForm_FormClosed(object sender, FormClosedEventArgs e)
+        {
+            if (isShuttingDown)
+            {
+                return;
+            }
+
+            ShowMainWindow();
+        }
+
+        void ReturnToFullView()
+        {
+            ShowMainWindow();
+            if (simpleViewForm != null && !simpleViewForm.IsDisposed)
+            {
+                simpleViewForm.FormClosed -= SimpleViewForm_FormClosed;
+                simpleViewForm.Close();
+                simpleViewForm = null;
+            }
+        }
+
         void FlowLogs_SizeChanged(object sender, EventArgs e)
         {
             flowLogs.RefreshLayoutMetrics();
+            if (simpleViewForm != null && !simpleViewForm.IsDisposed)
+            {
+                simpleViewForm.RefreshLayoutMetrics();
+            }
         }
 
         void ClearDisplayedLogs(bool clearHistory, bool resetFoodTimers = false)
@@ -637,6 +741,7 @@ namespace CgLogListener
             displayedGroups.Clear();
             visibleGroups.Clear();
             flowLogs.SetEntries(Array.Empty<DisplayedLogGroup>());
+            SyncSimpleView(scrollToLatest: false);
 
             if (clearHistory)
             {
@@ -711,12 +816,63 @@ namespace CgLogListener
             txtCgLogPath.Text = settings.CgLogPath;
             lblDedupValue.Text = $"{settings.DeduplicationSeconds} 秒";
             flowLogs.TranslationConfigured = HasTranslationCredentials();
+            if (simpleViewForm != null && !simpleViewForm.IsDisposed)
+            {
+                simpleViewForm.TranslationConfigured = HasTranslationCredentials();
+            }
             UpdateStatus(HasValidLogPath() ? "リアルタイム監視中" : "監視フォルダ未設定");
         }
 
         void UpdateStatus(string text)
         {
             lblStatusValue.Text = text;
+        }
+
+        void SaveVisibleLogs()
+        {
+            if (visibleGroups.Count == 0)
+            {
+                MessageBox.Show(this, "保存できる表示ログがありません。", "ログ保存", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            using (var dialog = new SaveFileDialog())
+            {
+                dialog.Title = "表示ログを保存";
+                dialog.Filter = "テキスト ファイル (*.txt)|*.txt|すべてのファイル (*.*)|*.*";
+                dialog.DefaultExt = "txt";
+                dialog.AddExtension = true;
+                dialog.FileName = $"BlueCG_Log_{DateTime.Now:yyyyMMdd_HHmmss}.txt";
+
+                if (dialog.ShowDialog(this) != DialogResult.OK)
+                {
+                    return;
+                }
+
+                try
+                {
+                    File.WriteAllLines(dialog.FileName, BuildVisibleLogExportLines(), Encoding.Unicode);
+                    MessageBox.Show(this, "表示中のログを保存しました。", "ログ保存", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show(this, $"ログ保存に失敗しました。\r\n{ex.Message}", "ログ保存", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                }
+            }
+        }
+
+        IEnumerable<string> BuildVisibleLogExportLines()
+        {
+            foreach (var group in visibleGroups)
+            {
+                string line = $"{group.DisplayTimestamp:HH:mm:ss} [{LogCategoryPalette.GetLabel(group.Category)}] {group.VisibleMessage}";
+                if (group.Count > 1)
+                {
+                    line += $" (x{group.Count})";
+                }
+
+                yield return line;
+            }
         }
 
         void ScrollToLatestVisibleLog()
@@ -764,11 +920,16 @@ namespace CgLogListener
 
         void FormMain_FormClosing(object sender, FormClosingEventArgs e)
         {
+            isShuttingDown = true;
             watcher?.Dispose();
             notifyIcon?.Dispose();
             if (foodTimerForm != null && !foodTimerForm.IsDisposed)
             {
                 foodTimerForm.Close();
+            }
+            if (simpleViewForm != null && !simpleViewForm.IsDisposed)
+            {
+                simpleViewForm.Close();
             }
             foreach (var service in translationServices.Values.OfType<IDisposable>())
             {
