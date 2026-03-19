@@ -16,6 +16,11 @@ namespace CgLogListener
         readonly Label lblSoundValue = new Label();
         readonly CheckBox chkTelegram = new CheckBox();
         readonly CheckBox chkDiscord = new CheckBox();
+        readonly ComboBox cmbTranslationProvider = new ComboBox();
+        readonly Label lblTranslationKey = new Label();
+        readonly TextBox txtDeepLApiKey = new TextBox();
+        readonly TextBox txtGoogleApiKey = new TextBox();
+        readonly Label lblTranslationHint = new Label();
         readonly ListBox listCustomKeywords = new ListBox();
         readonly Dictionary<string, CheckBox> presetCheckBoxes = new Dictionary<string, CheckBox>();
         string selectedLogPath;
@@ -73,6 +78,60 @@ namespace CgLogListener
             panelHeader.Controls.Add(lblTitle);
             panelHeader.Controls.Add(lblSubtitle);
 
+            var panelTopActions = new Panel
+            {
+                Dock = DockStyle.Top,
+                Height = 64,
+                BackColor = Color.White,
+                Padding = new Padding(24, 12, 24, 12),
+            };
+            var panelTopActionButtons = new FlowLayoutPanel
+            {
+                Dock = DockStyle.Right,
+                AutoSize = true,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink,
+                FlowDirection = FlowDirection.LeftToRight,
+                WrapContents = false,
+                BackColor = Color.White,
+                Margin = new Padding(0),
+                Padding = new Padding(0),
+            };
+            var lblTopHint = new Label
+            {
+                AutoSize = true,
+                ForeColor = Color.FromArgb(91, 102, 114),
+                Location = new Point(24, 24),
+                Text = "変更内容は保存ボタンで反映されます。",
+            };
+            var btnTopClose = new Button
+            {
+                DialogResult = DialogResult.Cancel,
+                Text = "閉じる",
+                Width = 128,
+                Height = 40,
+                Margin = new Padding(0, 0, 12, 0),
+            };
+            btnTopClose.FlatStyle = FlatStyle.Flat;
+            btnTopClose.FlatAppearance.BorderColor = Color.FromArgb(204, 214, 224);
+            btnTopClose.BackColor = Color.White;
+
+            var btnTopSave = new Button
+            {
+                Text = "保存",
+                Width = 148,
+                Height = 40,
+                Margin = new Padding(0),
+            };
+            btnTopSave.FlatStyle = FlatStyle.Flat;
+            btnTopSave.FlatAppearance.BorderColor = Color.FromArgb(18, 93, 156);
+            btnTopSave.BackColor = Color.FromArgb(18, 93, 156);
+            btnTopSave.ForeColor = Color.White;
+            btnTopSave.Click += BtnSave_Click;
+            panelTopActionButtons.Controls.Add(btnTopClose);
+            panelTopActionButtons.Controls.Add(btnTopSave);
+            panelTopActions.Controls.Add(lblTopHint);
+            panelTopActions.Controls.Add(panelTopActionButtons);
+
             var panelContent = new Panel
             {
                 Dock = DockStyle.Fill,
@@ -93,6 +152,7 @@ namespace CgLogListener
             flowSections.Controls.Add(CreateGeneralSection());
             flowSections.Controls.Add(CreateNotificationSection());
             flowSections.Controls.Add(CreateCustomKeywordSection());
+            flowSections.Controls.Add(CreateTranslationSection());
             flowSections.Controls.Add(CreateExternalNotificationSection());
 
             panelContent.Controls.Add(flowSections);
@@ -104,6 +164,17 @@ namespace CgLogListener
                 BackColor = Color.White,
                 Padding = new Padding(24, 18, 24, 18),
             };
+            var panelBottomActionButtons = new FlowLayoutPanel
+            {
+                Dock = DockStyle.Right,
+                AutoSize = true,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink,
+                FlowDirection = FlowDirection.LeftToRight,
+                WrapContents = false,
+                BackColor = Color.White,
+                Margin = new Padding(0),
+                Padding = new Padding(0),
+            };
 
             var btnCancel = new Button
             {
@@ -111,8 +182,7 @@ namespace CgLogListener
                 Text = "閉じる",
                 Width = 128,
                 Height = 40,
-                Anchor = AnchorStyles.Right | AnchorStyles.Top,
-                Location = new Point(536, 20),
+                Margin = new Padding(0, 0, 12, 0),
             };
             btnCancel.FlatStyle = FlatStyle.Flat;
             btnCancel.FlatAppearance.BorderColor = Color.FromArgb(204, 214, 224);
@@ -123,8 +193,7 @@ namespace CgLogListener
                 Text = "設定を保存",
                 Width = 148,
                 Height = 40,
-                Anchor = AnchorStyles.Right | AnchorStyles.Top,
-                Location = new Point(676, 20),
+                Margin = new Padding(0),
             };
             btnSave.FlatStyle = FlatStyle.Flat;
             btnSave.FlatAppearance.BorderColor = Color.FromArgb(18, 93, 156);
@@ -132,14 +201,16 @@ namespace CgLogListener
             btnSave.ForeColor = Color.White;
             btnSave.Click += BtnSave_Click;
 
-            panelButtons.Controls.Add(btnCancel);
-            panelButtons.Controls.Add(btnSave);
+            panelBottomActionButtons.Controls.Add(btnCancel);
+            panelBottomActionButtons.Controls.Add(btnSave);
+            panelButtons.Controls.Add(panelBottomActionButtons);
 
             AcceptButton = btnSave;
             CancelButton = btnCancel;
 
             Controls.Add(panelContent);
             Controls.Add(panelButtons);
+            Controls.Add(panelTopActions);
             Controls.Add(panelHeader);
 
             ResumeLayout(false);
@@ -288,6 +359,51 @@ namespace CgLogListener
             return section;
         }
 
+        Control CreateTranslationSection()
+        {
+            var section = CreateSectionPanel("翻訳");
+
+            var lblProvider = CreateSectionLabel("翻訳プロバイダ");
+            lblProvider.Location = new Point(20, 34);
+
+            cmbTranslationProvider.DropDownStyle = ComboBoxStyle.DropDownList;
+            cmbTranslationProvider.Location = new Point(20, 60);
+            cmbTranslationProvider.Width = 220;
+            cmbTranslationProvider.Items.AddRange(new object[]
+            {
+                "DeepL API Free",
+                "Google Cloud Translation"
+            });
+            cmbTranslationProvider.SelectedIndexChanged += CmbTranslationProvider_SelectedIndexChanged;
+
+            lblTranslationKey.AutoSize = true;
+            lblTranslationKey.Font = new Font("Yu Gothic UI", 9F, FontStyle.Regular);
+            lblTranslationKey.ForeColor = Color.FromArgb(33, 52, 72);
+            lblTranslationKey.BackColor = Color.White;
+            lblTranslationKey.Location = new Point(20, 102);
+
+            txtDeepLApiKey.Location = new Point(20, 128);
+            txtDeepLApiKey.Width = 680;
+            txtDeepLApiKey.UseSystemPasswordChar = true;
+
+            txtGoogleApiKey.Location = new Point(20, 128);
+            txtGoogleApiKey.Width = 680;
+            txtGoogleApiKey.UseSystemPasswordChar = true;
+
+            lblTranslationHint.AutoSize = true;
+            lblTranslationHint.Location = new Point(20, 162);
+            lblTranslationHint.ForeColor = Color.FromArgb(91, 102, 114);
+
+            section.Controls.Add(lblProvider);
+            section.Controls.Add(cmbTranslationProvider);
+            section.Controls.Add(lblTranslationKey);
+            section.Controls.Add(txtDeepLApiKey);
+            section.Controls.Add(txtGoogleApiKey);
+            section.Controls.Add(lblTranslationHint);
+            section.Height = 214;
+            return section;
+        }
+
         Control CreateExternalNotificationSection()
         {
             var section = CreateSectionPanel("外部送信");
@@ -373,6 +489,10 @@ namespace CgLogListener
             trackSoundVolume.Value = Math.Max(trackSoundVolume.Minimum, Math.Min(trackSoundVolume.Maximum, settings.SoundVol));
             chkTelegram.Checked = settings.CustomNotifyTypes.Contains(FormMain.CustomNotifyType.Telegram);
             chkDiscord.Checked = settings.CustomNotifyTypes.Contains(FormMain.CustomNotifyType.Discord);
+            cmbTranslationProvider.SelectedIndex = settings.TranslationProvider == TranslationProvider.Google ? 1 : 0;
+            txtDeepLApiKey.Text = settings.DeepLApiKey ?? string.Empty;
+            txtGoogleApiKey.Text = settings.GoogleApiKey ?? string.Empty;
+            UpdateTranslationProviderUi();
 
             foreach (var preset in NotificationPresets.All)
             {
@@ -436,6 +556,11 @@ namespace CgLogListener
         void TrackSoundVolume_ValueChanged(object sender, EventArgs e)
         {
             UpdateSoundValueLabel();
+        }
+
+        void CmbTranslationProvider_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            UpdateTranslationProviderUi();
         }
 
         void UpdateSoundValueLabel()
@@ -503,7 +628,10 @@ namespace CgLogListener
             }
 
             if (chkTelegram.Checked != settings.CustomNotifyTypes.Contains(FormMain.CustomNotifyType.Telegram) ||
-                chkDiscord.Checked != settings.CustomNotifyTypes.Contains(FormMain.CustomNotifyType.Discord))
+                chkDiscord.Checked != settings.CustomNotifyTypes.Contains(FormMain.CustomNotifyType.Discord) ||
+                cmbTranslationProvider.SelectedIndex != (settings.TranslationProvider == TranslationProvider.Google ? 1 : 0) ||
+                !string.Equals(txtDeepLApiKey.Text ?? string.Empty, settings.DeepLApiKey ?? string.Empty, StringComparison.Ordinal) ||
+                !string.Equals(txtGoogleApiKey.Text ?? string.Empty, settings.GoogleApiKey ?? string.Empty, StringComparison.Ordinal))
             {
                 return true;
             }
@@ -532,6 +660,9 @@ namespace CgLogListener
             settings.SetDeduplicationSeconds((int)numDedupSeconds.Value);
             settings.SetPlaySound(chkPlaySound.Checked);
             settings.SetSoundVol(trackSoundVolume.Value);
+            settings.SetTranslationProvider(GetSelectedTranslationProvider());
+            settings.SetDeepLApiKey(txtDeepLApiKey.Text);
+            settings.SetGoogleApiKey(txtGoogleApiKey.Text);
 
             foreach (var preset in NotificationPresets.All)
             {
@@ -557,6 +688,24 @@ namespace CgLogListener
         List<string> GetCurrentCustomKeywords()
         {
             return listCustomKeywords.Items.Cast<string>().ToList();
+        }
+
+        TranslationProvider GetSelectedTranslationProvider()
+        {
+            return cmbTranslationProvider.SelectedIndex == 1
+                ? TranslationProvider.Google
+                : TranslationProvider.DeepL;
+        }
+
+        void UpdateTranslationProviderUi()
+        {
+            bool useGoogle = GetSelectedTranslationProvider() == TranslationProvider.Google;
+            txtDeepLApiKey.Visible = !useGoogle;
+            txtGoogleApiKey.Visible = useGoogle;
+            lblTranslationKey.Text = useGoogle ? "Google Cloud Translation API キー" : "DeepL API Free キー";
+            lblTranslationHint.Text = useGoogle
+                ? "ログカードの「翻訳」ボタンを押した時だけ Google Cloud Translation API で日本語に翻訳します。"
+                : "ログカードの「翻訳」ボタンを押した時だけ DeepL API Free で日本語に翻訳します。";
         }
 
         void ApplyNotifierSetting(bool enabled, FormMain.CustomNotifyType notifyType)
