@@ -15,11 +15,13 @@ namespace CgLogListener
         const string settingsBaseSection = "base";
         const string settingsStandardTipsSection = "standard tips";
         const string custmizeFileName = "custmize.dat";
+        const int defaultDeduplicationSeconds = 2;
 
         public List<FormMain.CustomNotifyType> CustomNotifyTypes { get; private set; } = new List<FormMain.CustomNotifyType>();
         public bool PlaySound { get; private set; }
         public int SoundVol { get; private set; }
         public string CgLogPath { get; private set; }
+        public int DeduplicationSeconds { get; private set; }
         public Dictionary<string, bool> StandardTips { get; private set; } = new Dictionary<string, bool>();
         public List<string> CustomizeTips { get; private set; } = new List<string>();
 
@@ -50,11 +52,16 @@ namespace CgLogListener
         {
             var fileIniDataParser = new FileIniDataParser();
             var iniData = fileIniDataParser.ReadFile(settingsFileName);
+            StandardTips.Clear();
+            CustomizeTips.Clear();
 
             var baseData = iniData[settingsBaseSection];
             CgLogPath = baseData[nameof(CgLogPath)];
             PlaySound = baseData[nameof(PlaySound)] == "1";
             SoundVol = int.Parse(baseData[nameof(SoundVol)]);
+            DeduplicationSeconds = int.TryParse(baseData[nameof(DeduplicationSeconds)], out int dedupSeconds)
+                ? Math.Max(0, dedupSeconds)
+                : defaultDeduplicationSeconds;
             CustomNotifyTypes = baseData[nameof(CustomNotifyTypes)]
                 .Split(',')
                 .Select(s =>
@@ -84,6 +91,7 @@ namespace CgLogListener
             baseSection[nameof(CgLogPath)] = string.Empty;
             baseSection[nameof(PlaySound)] = "1";
             baseSection[nameof(SoundVol)] = "5";
+            baseSection[nameof(DeduplicationSeconds)] = defaultDeduplicationSeconds.ToString();
             baseSection[nameof(CustomNotifyTypes)] = string.Empty;
 
             var fileIniDataParser = new FileIniDataParser();
@@ -99,6 +107,7 @@ namespace CgLogListener
             baseSection[nameof(CgLogPath)] = CgLogPath;
             baseSection[nameof(PlaySound)] = PlaySound ? "1" : "0";
             baseSection[nameof(SoundVol)] = SoundVol.ToString();
+            baseSection[nameof(DeduplicationSeconds)] = DeduplicationSeconds.ToString();
             baseSection[nameof(CustomNotifyTypes)] = string.Join(",", CustomNotifyTypes.Select(t => t.ToString()));
 
             var standardTipData = iniData[settingsStandardTipsSection];
@@ -133,6 +142,12 @@ namespace CgLogListener
         internal void SetSoundVol(int value)
         {
             SoundVol = value;
+            UpdateConfig();
+        }
+
+        internal void SetDeduplicationSeconds(int value)
+        {
+            DeduplicationSeconds = Math.Max(0, value);
             UpdateConfig();
         }
 

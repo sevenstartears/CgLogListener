@@ -71,7 +71,14 @@
     <Reference Include="WindowsBase" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="BufferedFlowLayoutPanel.cs" />
     <Compile Include="CgLogHandler.cs" />
+    <Compile Include="DisplayedLogGroup.cs" />
+    <Compile Include="FormSettings.cs" />
+    <Compile Include="LogCategoryPalette.cs" />
+    <Compile Include="LogEntryControl.cs" />
+    <Compile Include="LogLine.cs" />
+    <Compile Include="NotificationPresets.cs" />
     <Compile Include="FormMain.cs">
       <SubType>Form</SubType>
     </Compile>
