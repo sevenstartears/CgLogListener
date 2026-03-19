@@ -20,6 +20,7 @@ namespace CgLogListener
         const int MaxRetainedLogs = 12000;
 
         readonly Label lblCategoryFilter = new Label();
+        readonly Label lblHeaderVersion = new Label();
         readonly FlowLayoutPanel flowCategoryFilters = new FlowLayoutPanel();
         readonly Dictionary<LogCategory, Button> categoryFilters = new Dictionary<LogCategory, Button>();
         readonly HashSet<LogCategory> enabledCategories = new HashSet<LogCategory>();
@@ -56,6 +57,12 @@ namespace CgLogListener
             StyleButton(btnClearLogs, false);
             StyleButton(btnSimpleView, false);
             StyleButton(btnFoodTimer, false);
+            lblHeaderVersion.AutoSize = true;
+            lblHeaderVersion.ForeColor = Color.FromArgb(220, 238, 255);
+            lblHeaderVersion.Font = new Font("Yu Gothic UI", 9F, FontStyle.Regular);
+            lblHeaderVersion.BackColor = Color.Transparent;
+            panelHeader.Controls.Add(lblHeaderVersion);
+            panelHeader.Resize += PanelHeader_Resize;
             InitializeCategoryFilterUi();
             ApplyLocalizedText();
             flowLogs.TranslateRequested += FlowLogs_TranslateRequested;
@@ -194,11 +201,37 @@ namespace CgLogListener
             btnOpenSettings.Text = "表示と通知の設定";
             btnFoodTimer.Text = "お食事タイマー";
             btnClearLogs.Text = "ログ保存";
+            lblHeaderVersion.Text = GetDisplayVersionText();
+            LayoutHeaderVersion();
 
             toolOpen.Text = "表示";
             toolMinsize.Text = "最小化";
             toolExit.Text = "終了";
             lblCategoryFilter.Text = "カテゴリ:";
+        }
+
+        void PanelHeader_Resize(object sender, EventArgs e)
+        {
+            LayoutHeaderVersion();
+        }
+
+        void LayoutHeaderVersion()
+        {
+            lblHeaderVersion.Location = new Point(
+                Math.Max(24, panelHeader.ClientSize.Width - lblHeaderVersion.Width - 28),
+                Math.Max(18, panelHeader.ClientSize.Height - lblHeaderVersion.Height - 18));
+            lblHeaderVersion.BringToFront();
+        }
+
+        string GetDisplayVersionText()
+        {
+            Version version;
+            if (Version.TryParse(Application.ProductVersion, out version))
+            {
+                return $"ver {version.Major}.{version.Minor}.{version.Build}";
+            }
+
+            return "ver 0.1.1";
         }
 
         void BindWatcher(bool loadRecentLogs)
