@@ -294,7 +294,7 @@ namespace CgLogListener
 
             if (allowNotification)
             {
-                RunNotificationSubfeatures(log.DisplayLine);
+                RunNotificationSubfeatures(log);
             }
 
             if (!refreshUi)
@@ -481,9 +481,10 @@ namespace CgLogListener
             return $"{settings.TranslationProvider}:{message}";
         }
 
-        void RunNotificationSubfeatures(string displayLine)
+        void RunNotificationSubfeatures(LogLine log)
         {
-            if (!ShouldNotify(displayLine))
+            string displayLine = log.DisplayLine;
+            if (!ShouldNotify(log))
             {
                 return;
             }
@@ -493,13 +494,15 @@ namespace CgLogListener
             _ = SendDiscordNotificationAsync(displayLine);
         }
 
-        bool ShouldNotify(string displayLine)
+        bool ShouldNotify(LogLine log)
         {
+            string displayLine = log.DisplayLine;
             foreach (var preset in NotificationPresets.All)
             {
                 bool enabled;
                 if (settings.StandardTips.TryGetValue(preset.Key, out enabled) &&
                     enabled &&
+                    (!preset.RequiredCategory.HasValue || preset.RequiredCategory.Value == log.Category) &&
                     Regex.IsMatch(displayLine, preset.Pattern))
                 {
                     return true;

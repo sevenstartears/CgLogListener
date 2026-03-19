@@ -290,12 +290,13 @@ namespace CgLogListener
             var presetPanel = new TableLayoutPanel
             {
                 Location = new Point(20, 172),
-                Size = new Size(680, 104),
+                Size = new Size(680, 0),
                 ColumnCount = 2,
-                RowCount = 3,
+                RowCount = (NotificationPresets.All.Count + 1) / 2,
             };
             presetPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
             presetPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
+            presetPanel.GrowStyle = TableLayoutPanelGrowStyle.FixedSize;
 
             for (int i = 0; i < NotificationPresets.All.Count; i++)
             {
@@ -303,19 +304,21 @@ namespace CgLogListener
                 var checkBox = new CheckBox
                 {
                     AutoSize = true,
-                    Text = preset.Label,
+                    Text = preset.DisplayLabel,
                     Margin = new Padding(0, 0, 16, 10),
                 };
                 presetCheckBoxes[preset.Key] = checkBox;
                 presetPanel.Controls.Add(checkBox, i % 2, i / 2);
             }
 
+            presetPanel.Height = (presetPanel.RowCount * 34) + 8;
+
             section.Controls.Add(chkPlaySound);
             section.Controls.Add(lblSoundValue);
             section.Controls.Add(trackSoundVolume);
             section.Controls.Add(lblPresetTitle);
             section.Controls.Add(presetPanel);
-            section.Height = 304;
+            section.Height = presetPanel.Bottom + 24;
             return section;
         }
 
