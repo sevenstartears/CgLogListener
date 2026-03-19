@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Drawing;
 using System.IO;
 using System.Linq;
@@ -29,17 +28,11 @@ namespace CgLogListener
         readonly Dictionary<string, string> translationCache = new Dictionary<string, string>(StringComparer.Ordinal);
         readonly Dictionary<string, Task<string>> translationTasks = new Dictionary<string, Task<string>>(StringComparer.Ordinal);
         readonly Dictionary<TranslationProvider, ITranslationService> translationServices = new Dictionary<TranslationProvider, ITranslationService>();
+        readonly DiscordWebhookNotifier discordNotifier = new DiscordWebhookNotifier();
         readonly MediaPlayer mp = new MediaPlayer();
 
         Settings settings;
         CgLogHandler watcher;
-
-        public enum CustomNotifyType
-        {
-            None,
-            Telegram,
-            Discord
-        }
 
         public FormMain()
         {
@@ -50,6 +43,7 @@ namespace CgLogListener
             notifyIcon.Icon = Resource.icon;
             translationServices[TranslationProvider.DeepL] = new DeepLTranslationService();
             translationServices[TranslationProvider.Google] = new GoogleTranslationService();
+            translationServices[TranslationProvider.OpenAI] = new OpenAITranslationService();
 
             StyleButton(btnOpenSettings, true);
             StyleButton(btnClearLogs, false);
@@ -436,9 +430,15 @@ namespace CgLogListener
 
         string GetSelectedTranslationApiKey()
         {
-            return settings.TranslationProvider == TranslationProvider.Google
-                ? settings.GoogleApiKey
-                : settings.DeepLApiKey;
+            switch (settings.TranslationProvider)
+            {
+                case TranslationProvider.Google:
+                    return settings.GoogleApiKey;
+                case TranslationProvider.OpenAI:
+                    return settings.OpenAIApiKey;
+                default:
+                    return settings.DeepLApiKey;
+            }
         }
 
         ITranslationService GetSelectedTranslationService()
@@ -448,9 +448,15 @@ namespace CgLogListener
 
         string GetTranslationProviderLabel()
         {
-            return settings.TranslationProvider == TranslationProvider.Google
-                ? "Google Cloud Translation"
-                : "DeepL API Free";
+            switch (settings.TranslationProvider)
+            {
+                case TranslationProvider.Google:
+                    return "Google Cloud Translation";
+                case TranslationProvider.OpenAI:
+                    return "OpenAI API";
+                default:
+                    return "DeepL API Free";
+            }
         }
 
         string BuildTranslationCacheKey(string message)
@@ -467,7 +473,7 @@ namespace CgLogListener
 
             notifyIcon.ShowBalloonTip(3000, notifyIcon.BalloonTipTitle, displayLine, ToolTipIcon.None);
             PlayNotificationSound();
-            LaunchExternalNotifiers(displayLine);
+            _ = SendDiscordNotificationAsync(displayLine);
         }
 
         bool ShouldNotify(string displayLine)
@@ -527,31 +533,20 @@ namespace CgLogListener
             }
         }
 
-        void LaunchExternalNotifiers(string displayLine)
+        async Task SendDiscordNotificationAsync(string displayLine)
         {
-            foreach (var notifierType in settings.CustomNotifyTypes)
+            if (!settings.DiscordNotificationEnabled || string.IsNullOrWhiteSpace(settings.DiscordWebhookUrl))
             {
-                try
-                {
-                    var notifier = $"{notifierType}Notifier.exe";
-                    var path = Path.Combine(Directory.GetCurrentDirectory(), notifier);
-                    if (!File.Exists(path))
-                    {
-                        continue;
-                    }
+                return;
+            }
 
-                    var processStartInfo = new ProcessStartInfo(path, $"\"{displayLine}\"")
-                    {
-                        WindowStyle = ProcessWindowStyle.Hidden,
-                        CreateNoWindow = true
-                    };
-
-                    Process.Start(processStartInfo);
-                }
-                catch
-                {
-                    // ignored
-                }
+            try
+            {
+                await discordNotifier.SendAsync(settings.DiscordWebhookUrl, displayLine, CancellationToken.None).ConfigureAwait(false);
+            }
+            catch
+            {
+                // ignored
             }
         }
 
@@ -734,6 +729,7 @@ namespace CgLogListener
             {
                 service.Dispose();
             }
+            discordNotifier.Dispose();
         }
 
         void StyleButton(Button button, bool primary)

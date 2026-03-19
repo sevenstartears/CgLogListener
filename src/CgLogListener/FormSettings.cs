@@ -14,12 +14,13 @@ namespace CgLogListener
         readonly CheckBox chkPlaySound = new CheckBox();
         readonly TrackBar trackSoundVolume = new TrackBar();
         readonly Label lblSoundValue = new Label();
-        readonly CheckBox chkTelegram = new CheckBox();
         readonly CheckBox chkDiscord = new CheckBox();
+        readonly TextBox txtDiscordWebhookUrl = new TextBox();
         readonly ComboBox cmbTranslationProvider = new ComboBox();
         readonly Label lblTranslationKey = new Label();
         readonly TextBox txtDeepLApiKey = new TextBox();
         readonly TextBox txtGoogleApiKey = new TextBox();
+        readonly TextBox txtOpenAIApiKey = new TextBox();
         readonly Label lblTranslationHint = new Label();
         readonly ListBox listCustomKeywords = new ListBox();
         readonly Dictionary<string, CheckBox> presetCheckBoxes = new Dictionary<string, CheckBox>();
@@ -221,9 +222,9 @@ namespace CgLogListener
             var section = CreateSectionPanel("ログ表示");
 
             var lblPath = CreateSectionLabel("ゲームフォルダ");
-            lblPath.Location = new Point(20, 30);
+            lblPath.Location = new Point(20, 40);
 
-            txtLogPath.Location = new Point(20, 56);
+            txtLogPath.Location = new Point(20, 66);
             txtLogPath.ReadOnly = true;
             txtLogPath.Width = 590;
             txtLogPath.BackColor = Color.White;
@@ -231,16 +232,16 @@ namespace CgLogListener
             var btnBrowse = new Button
             {
                 Text = "参照...",
-                Location = new Point(626, 54),
+                Location = new Point(626, 64),
                 Size = new Size(90, 32),
             };
             StyleSecondaryButton(btnBrowse);
             btnBrowse.Click += BtnBrowse_Click;
 
             var lblDedup = CreateSectionLabel("同一ログのまとめ秒数");
-            lblDedup.Location = new Point(20, 102);
+            lblDedup.Location = new Point(20, 112);
 
-            numDedupSeconds.Location = new Point(20, 128);
+            numDedupSeconds.Location = new Point(20, 138);
             numDedupSeconds.Minimum = 0;
             numDedupSeconds.Maximum = 30;
             numDedupSeconds.Width = 100;
@@ -249,7 +250,7 @@ namespace CgLogListener
             {
                 AutoSize = true,
                 ForeColor = Color.FromArgb(91, 102, 114),
-                Location = new Point(132, 131),
+                Location = new Point(132, 141),
                 Text = "近い時刻に流れた同じ本文のログを 1 件にまとめます。",
             };
 
@@ -259,7 +260,7 @@ namespace CgLogListener
             section.Controls.Add(lblDedup);
             section.Controls.Add(numDedupSeconds);
             section.Controls.Add(lblDedupHint);
-            section.Height = 184;
+            section.Height = 194;
             return section;
         }
 
@@ -268,14 +269,14 @@ namespace CgLogListener
             var section = CreateSectionPanel("通知サブ機能");
 
             chkPlaySound.AutoSize = true;
-            chkPlaySound.Location = new Point(20, 36);
+            chkPlaySound.Location = new Point(20, 42);
             chkPlaySound.Text = "通知時に SE を再生";
 
             lblSoundValue.AutoSize = true;
-            lblSoundValue.Location = new Point(20, 72);
+            lblSoundValue.Location = new Point(20, 80);
             lblSoundValue.ForeColor = Color.FromArgb(91, 102, 114);
 
-            trackSoundVolume.Location = new Point(20, 90);
+            trackSoundVolume.Location = new Point(20, 98);
             trackSoundVolume.AutoSize = false;
             trackSoundVolume.Minimum = 0;
             trackSoundVolume.Maximum = 10;
@@ -284,11 +285,11 @@ namespace CgLogListener
             trackSoundVolume.ValueChanged += TrackSoundVolume_ValueChanged;
 
             var lblPresetTitle = CreateSectionLabel("標準通知ルール");
-            lblPresetTitle.Location = new Point(20, 134);
+            lblPresetTitle.Location = new Point(20, 144);
 
             var presetPanel = new TableLayoutPanel
             {
-                Location = new Point(20, 162),
+                Location = new Point(20, 172),
                 Size = new Size(680, 104),
                 ColumnCount = 2,
                 RowCount = 3,
@@ -314,7 +315,7 @@ namespace CgLogListener
             section.Controls.Add(trackSoundVolume);
             section.Controls.Add(lblPresetTitle);
             section.Controls.Add(presetPanel);
-            section.Height = 294;
+            section.Height = 304;
             return section;
         }
 
@@ -325,18 +326,18 @@ namespace CgLogListener
             var lblHint = new Label
             {
                 AutoSize = true,
-                Location = new Point(20, 34),
+                Location = new Point(20, 42),
                 ForeColor = Color.FromArgb(91, 102, 114),
                 Text = "形式: キーワード|除外語1,除外語2",
             };
 
-            listCustomKeywords.Location = new Point(20, 64);
+            listCustomKeywords.Location = new Point(20, 72);
             listCustomKeywords.Size = new Size(580, 132);
 
             var btnAdd = new Button
             {
                 Text = "追加",
-                Location = new Point(616, 64),
+                Location = new Point(616, 72),
                 Size = new Size(84, 34),
             };
             StyleSecondaryButton(btnAdd);
@@ -345,7 +346,7 @@ namespace CgLogListener
             var btnRemove = new Button
             {
                 Text = "削除",
-                Location = new Point(616, 106),
+                Location = new Point(616, 114),
                 Size = new Size(84, 34),
             };
             StyleSecondaryButton(btnRemove);
@@ -355,7 +356,7 @@ namespace CgLogListener
             section.Controls.Add(listCustomKeywords);
             section.Controls.Add(btnAdd);
             section.Controls.Add(btnRemove);
-            section.Height = 228;
+            section.Height = 236;
             return section;
         }
 
@@ -364,15 +365,16 @@ namespace CgLogListener
             var section = CreateSectionPanel("翻訳");
 
             var lblProvider = CreateSectionLabel("翻訳プロバイダ");
-            lblProvider.Location = new Point(20, 34);
+            lblProvider.Location = new Point(20, 42);
 
             cmbTranslationProvider.DropDownStyle = ComboBoxStyle.DropDownList;
-            cmbTranslationProvider.Location = new Point(20, 60);
+            cmbTranslationProvider.Location = new Point(20, 68);
             cmbTranslationProvider.Width = 220;
             cmbTranslationProvider.Items.AddRange(new object[]
             {
                 "DeepL API Free",
-                "Google Cloud Translation"
+                "Google Cloud Translation",
+                "OpenAI API"
             });
             cmbTranslationProvider.SelectedIndexChanged += CmbTranslationProvider_SelectedIndexChanged;
 
@@ -380,18 +382,22 @@ namespace CgLogListener
             lblTranslationKey.Font = new Font("Yu Gothic UI", 9F, FontStyle.Regular);
             lblTranslationKey.ForeColor = Color.FromArgb(33, 52, 72);
             lblTranslationKey.BackColor = Color.White;
-            lblTranslationKey.Location = new Point(20, 102);
+            lblTranslationKey.Location = new Point(20, 110);
 
-            txtDeepLApiKey.Location = new Point(20, 128);
+            txtDeepLApiKey.Location = new Point(20, 136);
             txtDeepLApiKey.Width = 680;
             txtDeepLApiKey.UseSystemPasswordChar = true;
 
-            txtGoogleApiKey.Location = new Point(20, 128);
+            txtGoogleApiKey.Location = new Point(20, 136);
             txtGoogleApiKey.Width = 680;
             txtGoogleApiKey.UseSystemPasswordChar = true;
 
+            txtOpenAIApiKey.Location = new Point(20, 136);
+            txtOpenAIApiKey.Width = 680;
+            txtOpenAIApiKey.UseSystemPasswordChar = true;
+
             lblTranslationHint.AutoSize = true;
-            lblTranslationHint.Location = new Point(20, 162);
+            lblTranslationHint.Location = new Point(20, 170);
             lblTranslationHint.ForeColor = Color.FromArgb(91, 102, 114);
 
             section.Controls.Add(lblProvider);
@@ -399,8 +405,9 @@ namespace CgLogListener
             section.Controls.Add(lblTranslationKey);
             section.Controls.Add(txtDeepLApiKey);
             section.Controls.Add(txtGoogleApiKey);
+            section.Controls.Add(txtOpenAIApiKey);
             section.Controls.Add(lblTranslationHint);
-            section.Height = 214;
+            section.Height = 222;
             return section;
         }
 
@@ -408,35 +415,29 @@ namespace CgLogListener
         {
             var section = CreateSectionPanel("外部送信");
 
-            chkTelegram.AutoSize = true;
-            chkTelegram.Location = new Point(20, 38);
-            chkTelegram.Text = "Telegram に送信";
-
-            var lblTelegram = new Label
-            {
-                AutoSize = true,
-                Location = new Point(40, 64),
-                ForeColor = Color.FromArgb(91, 102, 114),
-                Text = "token と chat_id は TelegramNotifier.ini に設定します。",
-            };
-
             chkDiscord.AutoSize = true;
-            chkDiscord.Location = new Point(20, 104);
+            chkDiscord.Location = new Point(20, 42);
             chkDiscord.Text = "Discord に送信";
+
+            var lblDiscordWebhook = CreateSectionLabel("Discord Webhook URL");
+            lblDiscordWebhook.Location = new Point(20, 78);
+
+            txtDiscordWebhookUrl.Location = new Point(20, 104);
+            txtDiscordWebhookUrl.Width = 680;
 
             var lblDiscord = new Label
             {
                 AutoSize = true,
-                Location = new Point(40, 130),
+                Location = new Point(20, 142),
                 ForeColor = Color.FromArgb(91, 102, 114),
-                Text = "Webhook URL は DiscordNotifier.ini に設定します。",
+                Text = "通知が一致した時だけ、この Webhook URL に直接送信します。",
             };
 
-            section.Controls.Add(chkTelegram);
-            section.Controls.Add(lblTelegram);
             section.Controls.Add(chkDiscord);
+            section.Controls.Add(lblDiscordWebhook);
+            section.Controls.Add(txtDiscordWebhookUrl);
             section.Controls.Add(lblDiscord);
-            section.Height = 192;
+            section.Height = 194;
             return section;
         }
 
@@ -487,11 +488,12 @@ namespace CgLogListener
             numDedupSeconds.Value = (decimal)Math.Max((int)numDedupSeconds.Minimum, Math.Min((int)numDedupSeconds.Maximum, settings.DeduplicationSeconds));
             chkPlaySound.Checked = settings.PlaySound;
             trackSoundVolume.Value = Math.Max(trackSoundVolume.Minimum, Math.Min(trackSoundVolume.Maximum, settings.SoundVol));
-            chkTelegram.Checked = settings.CustomNotifyTypes.Contains(FormMain.CustomNotifyType.Telegram);
-            chkDiscord.Checked = settings.CustomNotifyTypes.Contains(FormMain.CustomNotifyType.Discord);
-            cmbTranslationProvider.SelectedIndex = settings.TranslationProvider == TranslationProvider.Google ? 1 : 0;
+            chkDiscord.Checked = settings.DiscordNotificationEnabled;
+            txtDiscordWebhookUrl.Text = settings.DiscordWebhookUrl ?? string.Empty;
+            cmbTranslationProvider.SelectedIndex = GetProviderIndex(settings.TranslationProvider);
             txtDeepLApiKey.Text = settings.DeepLApiKey ?? string.Empty;
             txtGoogleApiKey.Text = settings.GoogleApiKey ?? string.Empty;
+            txtOpenAIApiKey.Text = settings.OpenAIApiKey ?? string.Empty;
             UpdateTranslationProviderUi();
 
             foreach (var preset in NotificationPresets.All)
@@ -627,11 +629,12 @@ namespace CgLogListener
                 return true;
             }
 
-            if (chkTelegram.Checked != settings.CustomNotifyTypes.Contains(FormMain.CustomNotifyType.Telegram) ||
-                chkDiscord.Checked != settings.CustomNotifyTypes.Contains(FormMain.CustomNotifyType.Discord) ||
-                cmbTranslationProvider.SelectedIndex != (settings.TranslationProvider == TranslationProvider.Google ? 1 : 0) ||
+            if (chkDiscord.Checked != settings.DiscordNotificationEnabled ||
+                !string.Equals(txtDiscordWebhookUrl.Text ?? string.Empty, settings.DiscordWebhookUrl ?? string.Empty, StringComparison.Ordinal) ||
+                cmbTranslationProvider.SelectedIndex != GetProviderIndex(settings.TranslationProvider) ||
                 !string.Equals(txtDeepLApiKey.Text ?? string.Empty, settings.DeepLApiKey ?? string.Empty, StringComparison.Ordinal) ||
-                !string.Equals(txtGoogleApiKey.Text ?? string.Empty, settings.GoogleApiKey ?? string.Empty, StringComparison.Ordinal))
+                !string.Equals(txtGoogleApiKey.Text ?? string.Empty, settings.GoogleApiKey ?? string.Empty, StringComparison.Ordinal) ||
+                !string.Equals(txtOpenAIApiKey.Text ?? string.Empty, settings.OpenAIApiKey ?? string.Empty, StringComparison.Ordinal))
             {
                 return true;
             }
@@ -656,13 +659,22 @@ namespace CgLogListener
                 return false;
             }
 
+            if (chkDiscord.Checked && string.IsNullOrWhiteSpace(txtDiscordWebhookUrl.Text))
+            {
+                MessageBox.Show(this, "Discord 送信を有効にする場合は Webhook URL を入力してください。", "Webhook URL 未設定", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return false;
+            }
+
             settings.SetCgLogPath(selectedLogPath);
             settings.SetDeduplicationSeconds((int)numDedupSeconds.Value);
             settings.SetPlaySound(chkPlaySound.Checked);
             settings.SetSoundVol(trackSoundVolume.Value);
+            settings.SetDiscordNotificationEnabled(chkDiscord.Checked);
+            settings.SetDiscordWebhookUrl(txtDiscordWebhookUrl.Text);
             settings.SetTranslationProvider(GetSelectedTranslationProvider());
             settings.SetDeepLApiKey(txtDeepLApiKey.Text);
             settings.SetGoogleApiKey(txtGoogleApiKey.Text);
+            settings.SetOpenAIApiKey(txtOpenAIApiKey.Text);
 
             foreach (var preset in NotificationPresets.All)
             {
@@ -680,8 +692,6 @@ namespace CgLogListener
                 settings.AddCustmizeTip(item);
             }
 
-            ApplyNotifierSetting(chkTelegram.Checked, FormMain.CustomNotifyType.Telegram);
-            ApplyNotifierSetting(chkDiscord.Checked, FormMain.CustomNotifyType.Discord);
             return true;
         }
 
@@ -692,32 +702,53 @@ namespace CgLogListener
 
         TranslationProvider GetSelectedTranslationProvider()
         {
-            return cmbTranslationProvider.SelectedIndex == 1
-                ? TranslationProvider.Google
-                : TranslationProvider.DeepL;
+            switch (cmbTranslationProvider.SelectedIndex)
+            {
+                case 1:
+                    return TranslationProvider.Google;
+                case 2:
+                    return TranslationProvider.OpenAI;
+                default:
+                    return TranslationProvider.DeepL;
+            }
+        }
+
+        int GetProviderIndex(TranslationProvider provider)
+        {
+            switch (provider)
+            {
+                case TranslationProvider.Google:
+                    return 1;
+                case TranslationProvider.OpenAI:
+                    return 2;
+                default:
+                    return 0;
+            }
         }
 
         void UpdateTranslationProviderUi()
         {
-            bool useGoogle = GetSelectedTranslationProvider() == TranslationProvider.Google;
-            txtDeepLApiKey.Visible = !useGoogle;
-            txtGoogleApiKey.Visible = useGoogle;
-            lblTranslationKey.Text = useGoogle ? "Google Cloud Translation API キー" : "DeepL API Free キー";
-            lblTranslationHint.Text = useGoogle
-                ? "ログカードの「翻訳」ボタンを押した時だけ Google Cloud Translation API で日本語に翻訳します。"
-                : "ログカードの「翻訳」ボタンを押した時だけ DeepL API Free で日本語に翻訳します。";
+            var provider = GetSelectedTranslationProvider();
+            txtDeepLApiKey.Visible = provider == TranslationProvider.DeepL;
+            txtGoogleApiKey.Visible = provider == TranslationProvider.Google;
+            txtOpenAIApiKey.Visible = provider == TranslationProvider.OpenAI;
+
+            switch (provider)
+            {
+                case TranslationProvider.Google:
+                    lblTranslationKey.Text = "Google Cloud Translation API キー";
+                    lblTranslationHint.Text = "ログカードの「翻訳」ボタンを押した時だけ Google Cloud Translation API で日本語に翻訳します。";
+                    break;
+                case TranslationProvider.OpenAI:
+                    lblTranslationKey.Text = "OpenAI API キー";
+                    lblTranslationHint.Text = "ログカードの「翻訳」ボタンを押した時だけ OpenAI Responses API と gpt-5-mini で日本語に翻訳します。";
+                    break;
+                default:
+                    lblTranslationKey.Text = "DeepL API Free キー";
+                    lblTranslationHint.Text = "ログカードの「翻訳」ボタンを押した時だけ DeepL API Free で日本語に翻訳します。";
+                    break;
+            }
         }
 
-        void ApplyNotifierSetting(bool enabled, FormMain.CustomNotifyType notifyType)
-        {
-            if (enabled)
-            {
-                settings.SetCustomNotify(notifyType);
-            }
-            else
-            {
-                settings.RemoveCustomNotify(notifyType);
-            }
-        }
     }
 }

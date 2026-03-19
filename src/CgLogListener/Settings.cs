@@ -17,14 +17,16 @@ namespace CgLogListener
         const string custmizeFileName = "custmize.dat";
         const int defaultDeduplicationSeconds = 2;
 
-        public List<FormMain.CustomNotifyType> CustomNotifyTypes { get; private set; } = new List<FormMain.CustomNotifyType>();
         public bool PlaySound { get; private set; }
         public int SoundVol { get; private set; }
         public string CgLogPath { get; private set; }
         public int DeduplicationSeconds { get; private set; }
+        public bool DiscordNotificationEnabled { get; private set; }
+        public string DiscordWebhookUrl { get; private set; }
         public TranslationProvider TranslationProvider { get; private set; }
         public string DeepLApiKey { get; private set; }
         public string GoogleApiKey { get; private set; }
+        public string OpenAIApiKey { get; private set; }
         public Dictionary<string, bool> StandardTips { get; private set; } = new Dictionary<string, bool>();
         public List<string> CustomizeTips { get; private set; } = new List<string>();
 
@@ -68,14 +70,17 @@ namespace CgLogListener
             TranslationProvider = Enum.TryParse(baseData[nameof(TranslationProvider)], out TranslationProvider provider)
                 ? provider
                 : TranslationProvider.DeepL;
+            var legacyCustomNotifyTypes = (baseData[nameof(LegacyCustomNotifyTypes)] ?? string.Empty)
+                .Split(',')
+                .Select(s => s.Trim())
+                .Where(s => !string.IsNullOrWhiteSpace(s))
+                .ToList();
+            DiscordNotificationEnabled = baseData[nameof(DiscordNotificationEnabled)] == "1" ||
+                (baseData[nameof(DiscordNotificationEnabled)] == null && legacyCustomNotifyTypes.Contains("Discord"));
+            DiscordWebhookUrl = baseData[nameof(DiscordWebhookUrl)] ?? TryLoadLegacyDiscordWebhookUrl();
             DeepLApiKey = baseData[nameof(DeepLApiKey)] ?? string.Empty;
             GoogleApiKey = baseData[nameof(GoogleApiKey)] ?? string.Empty;
-            CustomNotifyTypes = baseData[nameof(CustomNotifyTypes)]
-                .Split(',')
-                .Select(s =>
-                    Enum.TryParse(s, out FormMain.CustomNotifyType result) ? result : FormMain.CustomNotifyType.None)
-                .Where(t => t != FormMain.CustomNotifyType.None)
-                .ToList();
+            OpenAIApiKey = baseData[nameof(OpenAIApiKey)] ?? string.Empty;
 
             var standardTipData = iniData[settingsStandardTipsSection];
             foreach (var kd in standardTipData)
@@ -100,10 +105,12 @@ namespace CgLogListener
             baseSection[nameof(PlaySound)] = "1";
             baseSection[nameof(SoundVol)] = "5";
             baseSection[nameof(DeduplicationSeconds)] = defaultDeduplicationSeconds.ToString();
+            baseSection[nameof(DiscordNotificationEnabled)] = "0";
+            baseSection[nameof(DiscordWebhookUrl)] = string.Empty;
             baseSection[nameof(TranslationProvider)] = TranslationProvider.DeepL.ToString();
             baseSection[nameof(DeepLApiKey)] = string.Empty;
             baseSection[nameof(GoogleApiKey)] = string.Empty;
-            baseSection[nameof(CustomNotifyTypes)] = string.Empty;
+            baseSection[nameof(OpenAIApiKey)] = string.Empty;
 
             var fileIniDataParser = new FileIniDataParser();
             fileIniDataParser.WriteFile(settingsFileName, iniData);
@@ -119,10 +126,12 @@ namespace CgLogListener
             baseSection[nameof(PlaySound)] = PlaySound ? "1" : "0";
             baseSection[nameof(SoundVol)] = SoundVol.ToString();
             baseSection[nameof(DeduplicationSeconds)] = DeduplicationSeconds.ToString();
+            baseSection[nameof(DiscordNotificationEnabled)] = DiscordNotificationEnabled ? "1" : "0";
+            baseSection[nameof(DiscordWebhookUrl)] = DiscordWebhookUrl ?? string.Empty;
             baseSection[nameof(TranslationProvider)] = TranslationProvider.ToString();
             baseSection[nameof(DeepLApiKey)] = DeepLApiKey ?? string.Empty;
             baseSection[nameof(GoogleApiKey)] = GoogleApiKey ?? string.Empty;
-            baseSection[nameof(CustomNotifyTypes)] = string.Join(",", CustomNotifyTypes.Select(t => t.ToString()));
+            baseSection[nameof(OpenAIApiKey)] = OpenAIApiKey ?? string.Empty;
 
             var standardTipData = iniData[settingsStandardTipsSection];
             foreach (var kv in StandardTips)
@@ -165,6 +174,18 @@ namespace CgLogListener
             UpdateConfig();
         }
 
+        internal void SetDiscordNotificationEnabled(bool value)
+        {
+            DiscordNotificationEnabled = value;
+            UpdateConfig();
+        }
+
+        internal void SetDiscordWebhookUrl(string value)
+        {
+            DiscordWebhookUrl = value?.Trim() ?? string.Empty;
+            UpdateConfig();
+        }
+
         internal void SetDeepLApiKey(string value)
         {
             DeepLApiKey = value?.Trim() ?? string.Empty;
@@ -174,6 +195,12 @@ namespace CgLogListener
         internal void SetGoogleApiKey(string value)
         {
             GoogleApiKey = value?.Trim() ?? string.Empty;
+            UpdateConfig();
+        }
+
+        internal void SetOpenAIApiKey(string value)
+        {
+            OpenAIApiKey = value?.Trim() ?? string.Empty;
             UpdateConfig();
         }
 
@@ -195,24 +222,27 @@ namespace CgLogListener
             UpdateConfig();
         }
 
-        internal void SetCustomNotify(FormMain.CustomNotifyType notifyType)
+        static string TryLoadLegacyDiscordWebhookUrl()
         {
-            if (CustomNotifyTypes.Contains(notifyType))
+            const string legacyIniFilename = "DiscordNotifier.ini";
+            if (!File.Exists(legacyIniFilename))
             {
-                return;
+                return string.Empty;
             }
-            CustomNotifyTypes.Add(notifyType);
-            UpdateConfig();
-        }
-        
-        internal void RemoveCustomNotify(FormMain.CustomNotifyType notifyType)
-        {
-            if (!CustomNotifyTypes.Contains(notifyType))
+
+            try
             {
-                return;
+                var ini = new FileIniDataParser().ReadFile(legacyIniFilename);
+                return ini.TryGetKey("webhookUrl", out var webhookUrl)
+                    ? webhookUrl ?? string.Empty
+                    : string.Empty;
             }
-            CustomNotifyTypes.Remove(notifyType);
-            UpdateConfig();
+            catch
+            {
+                return string.Empty;
+            }
         }
+
+        const string LegacyCustomNotifyTypes = "CustomNotifyTypes";
     }
 }

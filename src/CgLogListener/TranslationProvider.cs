@@ -3,6 +3,7 @@ namespace CgLogListener
     public enum TranslationProvider
     {
         DeepL,
-        Google
+        Google,
+        OpenAI
     }
 }

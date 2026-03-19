@@ -76,6 +76,7 @@
     <Compile Include="CgLogHandler.cs" />
     <Compile Include="DeepLTranslationService.cs" />
     <Compile Include="DisplayedLogGroup.cs" />
+    <Compile Include="DiscordWebhookNotifier.cs" />
     <Compile Include="FormSettings.cs" />
     <Compile Include="GoogleTranslationService.cs" />
     <Compile Include="ITranslationService.cs" />
@@ -83,6 +84,7 @@
     <Compile Include="LogEntryControl.cs" />
     <Compile Include="LogLine.cs" />
     <Compile Include="NotificationPresets.cs" />
+    <Compile Include="OpenAITranslationService.cs" />
     <Compile Include="TranslationProvider.cs" />
     <Compile Include="FormMain.cs">
       <SubType>Form</SubType>
