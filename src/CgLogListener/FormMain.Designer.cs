@@ -99,8 +99,8 @@ namespace CgLogListener
             this.panelHeader.Dock = System.Windows.Forms.DockStyle.Top;
             this.panelHeader.Location = new System.Drawing.Point(0, 0);
             this.panelHeader.Name = "panelHeader";
-            this.panelHeader.Padding = new System.Windows.Forms.Padding(24, 18, 24, 12);
-            this.panelHeader.Size = new System.Drawing.Size(1084, 104);
+            this.panelHeader.Padding = new System.Windows.Forms.Padding(24, 20, 24, 14);
+            this.panelHeader.Size = new System.Drawing.Size(1084, 112);
             this.panelHeader.TabIndex = 0;
             // 
             // lblHeaderSubtitle
@@ -108,7 +108,7 @@ namespace CgLogListener
             this.lblHeaderSubtitle.AutoSize = true;
             this.lblHeaderSubtitle.Font = new System.Drawing.Font("Yu Gothic UI", 10F);
             this.lblHeaderSubtitle.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(220)))), ((int)(((byte)(238)))), ((int)(((byte)(255)))));
-            this.lblHeaderSubtitle.Location = new System.Drawing.Point(28, 57);
+            this.lblHeaderSubtitle.Location = new System.Drawing.Point(28, 64);
             this.lblHeaderSubtitle.Name = "lblHeaderSubtitle";
             this.lblHeaderSubtitle.Size = new System.Drawing.Size(471, 19);
             this.lblHeaderSubtitle.TabIndex = 1;
@@ -119,7 +119,7 @@ namespace CgLogListener
             this.lblHeaderTitle.AutoSize = true;
             this.lblHeaderTitle.Font = new System.Drawing.Font("Yu Gothic UI Semibold", 20F, System.Drawing.FontStyle.Bold);
             this.lblHeaderTitle.ForeColor = System.Drawing.Color.White;
-            this.lblHeaderTitle.Location = new System.Drawing.Point(24, 18);
+            this.lblHeaderTitle.Location = new System.Drawing.Point(24, 20);
             this.lblHeaderTitle.Name = "lblHeaderTitle";
             this.lblHeaderTitle.Size = new System.Drawing.Size(246, 37);
             this.lblHeaderTitle.TabIndex = 0;
@@ -137,7 +137,7 @@ namespace CgLogListener
             this.panelToolbar.Controls.Add(this.txtCgLogPath);
             this.panelToolbar.Controls.Add(this.lblLogPath);
             this.panelToolbar.Dock = System.Windows.Forms.DockStyle.Top;
-            this.panelToolbar.Location = new System.Drawing.Point(0, 104);
+            this.panelToolbar.Location = new System.Drawing.Point(0, 112);
             this.panelToolbar.Name = "panelToolbar";
             this.panelToolbar.Padding = new System.Windows.Forms.Padding(24, 18, 24, 14);
             this.panelToolbar.Size = new System.Drawing.Size(1084, 122);
@@ -236,10 +236,10 @@ namespace CgLogListener
             this.panelLogHost.Controls.Add(this.lblEmptyState);
             this.panelLogHost.Controls.Add(this.flowLogs);
             this.panelLogHost.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.panelLogHost.Location = new System.Drawing.Point(0, 226);
+            this.panelLogHost.Location = new System.Drawing.Point(0, 234);
             this.panelLogHost.Name = "panelLogHost";
             this.panelLogHost.Padding = new System.Windows.Forms.Padding(24, 18, 24, 18);
-            this.panelLogHost.Size = new System.Drawing.Size(1084, 495);
+            this.panelLogHost.Size = new System.Drawing.Size(1084, 487);
             this.panelLogHost.TabIndex = 2;
             // 
             // lblEmptyState
