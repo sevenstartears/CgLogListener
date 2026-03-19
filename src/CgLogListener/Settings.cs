@@ -22,6 +22,9 @@ namespace CgLogListener
         public int SoundVol { get; private set; }
         public string CgLogPath { get; private set; }
         public int DeduplicationSeconds { get; private set; }
+        public TranslationProvider TranslationProvider { get; private set; }
+        public string DeepLApiKey { get; private set; }
+        public string GoogleApiKey { get; private set; }
         public Dictionary<string, bool> StandardTips { get; private set; } = new Dictionary<string, bool>();
         public List<string> CustomizeTips { get; private set; } = new List<string>();
 
@@ -62,6 +65,11 @@ namespace CgLogListener
             DeduplicationSeconds = int.TryParse(baseData[nameof(DeduplicationSeconds)], out int dedupSeconds)
                 ? Math.Max(0, dedupSeconds)
                 : defaultDeduplicationSeconds;
+            TranslationProvider = Enum.TryParse(baseData[nameof(TranslationProvider)], out TranslationProvider provider)
+                ? provider
+                : TranslationProvider.DeepL;
+            DeepLApiKey = baseData[nameof(DeepLApiKey)] ?? string.Empty;
+            GoogleApiKey = baseData[nameof(GoogleApiKey)] ?? string.Empty;
             CustomNotifyTypes = baseData[nameof(CustomNotifyTypes)]
                 .Split(',')
                 .Select(s =>
@@ -92,6 +100,9 @@ namespace CgLogListener
             baseSection[nameof(PlaySound)] = "1";
             baseSection[nameof(SoundVol)] = "5";
             baseSection[nameof(DeduplicationSeconds)] = defaultDeduplicationSeconds.ToString();
+            baseSection[nameof(TranslationProvider)] = TranslationProvider.DeepL.ToString();
+            baseSection[nameof(DeepLApiKey)] = string.Empty;
+            baseSection[nameof(GoogleApiKey)] = string.Empty;
             baseSection[nameof(CustomNotifyTypes)] = string.Empty;
 
             var fileIniDataParser = new FileIniDataParser();
@@ -108,6 +119,9 @@ namespace CgLogListener
             baseSection[nameof(PlaySound)] = PlaySound ? "1" : "0";
             baseSection[nameof(SoundVol)] = SoundVol.ToString();
             baseSection[nameof(DeduplicationSeconds)] = DeduplicationSeconds.ToString();
+            baseSection[nameof(TranslationProvider)] = TranslationProvider.ToString();
+            baseSection[nameof(DeepLApiKey)] = DeepLApiKey ?? string.Empty;
+            baseSection[nameof(GoogleApiKey)] = GoogleApiKey ?? string.Empty;
             baseSection[nameof(CustomNotifyTypes)] = string.Join(",", CustomNotifyTypes.Select(t => t.ToString()));
 
             var standardTipData = iniData[settingsStandardTipsSection];
@@ -148,6 +162,24 @@ namespace CgLogListener
         internal void SetDeduplicationSeconds(int value)
         {
             DeduplicationSeconds = Math.Max(0, value);
+            UpdateConfig();
+        }
+
+        internal void SetDeepLApiKey(string value)
+        {
+            DeepLApiKey = value?.Trim() ?? string.Empty;
+            UpdateConfig();
+        }
+
+        internal void SetGoogleApiKey(string value)
+        {
+            GoogleApiKey = value?.Trim() ?? string.Empty;
+            UpdateConfig();
+        }
+
+        internal void SetTranslationProvider(TranslationProvider provider)
+        {
+            TranslationProvider = provider;
             UpdateConfig();
         }
 

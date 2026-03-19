@@ -5,6 +5,8 @@ using System.Drawing;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
+using System.Threading;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 using System.Windows.Media;
 using Color = System.Drawing.Color;
@@ -24,6 +26,9 @@ namespace CgLogListener
         readonly List<DisplayedLogGroup> displayedGroups = new List<DisplayedLogGroup>();
         readonly List<DisplayedLogGroup> visibleGroups = new List<DisplayedLogGroup>();
         readonly List<LogLine> logHistory = new List<LogLine>();
+        readonly Dictionary<string, string> translationCache = new Dictionary<string, string>(StringComparer.Ordinal);
+        readonly Dictionary<string, Task<string>> translationTasks = new Dictionary<string, Task<string>>(StringComparer.Ordinal);
+        readonly Dictionary<TranslationProvider, ITranslationService> translationServices = new Dictionary<TranslationProvider, ITranslationService>();
         readonly MediaPlayer mp = new MediaPlayer();
 
         Settings settings;
@@ -43,11 +48,14 @@ namespace CgLogListener
             ImeMode = ImeMode.OnHalf;
             Icon = Resource.icon;
             notifyIcon.Icon = Resource.icon;
+            translationServices[TranslationProvider.DeepL] = new DeepLTranslationService();
+            translationServices[TranslationProvider.Google] = new GoogleTranslationService();
 
             StyleButton(btnOpenSettings, true);
             StyleButton(btnClearLogs, false);
             InitializeCategoryFilterUi();
             ApplyLocalizedText();
+            flowLogs.TranslateRequested += FlowLogs_TranslateRequested;
         }
 
         void FrmMain_Load(object sender, EventArgs e)
@@ -338,6 +346,118 @@ namespace CgLogListener
             UpdateEmptyState();
         }
 
+        async void FlowLogs_TranslateRequested(object sender, BufferedFlowLayoutPanel.TranslateRequestedEventArgs e)
+        {
+            var entry = e.Entry;
+            if (entry == null)
+            {
+                return;
+            }
+
+            if (entry.CanToggleTranslation)
+            {
+                entry.ToggleTranslation();
+                flowLogs.RefreshEntry(entry);
+                return;
+            }
+
+            if (entry.TranslationState == TranslationState.InProgress)
+            {
+                return;
+            }
+
+            if (!HasTranslationCredentials())
+            {
+                MessageBox.Show(this, $"翻訳を使うには設定画面で {GetTranslationProviderLabel()} の API キーを入力してください。", "翻訳未設定", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            string translatedMessage;
+            string cacheKey = BuildTranslationCacheKey(entry.Message);
+            if (translationCache.TryGetValue(cacheKey, out translatedMessage))
+            {
+                entry.SetTranslation(translatedMessage);
+                flowLogs.RefreshEntry(entry);
+                return;
+            }
+
+            entry.StartTranslation();
+            flowLogs.RefreshEntry(entry);
+
+            try
+            {
+                translatedMessage = await GetOrCreateTranslationTask(entry.Message).ConfigureAwait(true);
+                entry.SetTranslation(translatedMessage);
+            }
+            catch (Exception ex)
+            {
+                entry.MarkTranslationFailed();
+                MessageBox.Show(this, $"{GetTranslationProviderLabel()} での翻訳に失敗しました。\r\n{ex.Message}", "翻訳エラー", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            }
+
+            flowLogs.RefreshEntry(entry);
+        }
+
+        Task<string> GetOrCreateTranslationTask(string message)
+        {
+            string cacheKey = BuildTranslationCacheKey(message);
+            Task<string> task;
+            if (translationTasks.TryGetValue(cacheKey, out task))
+            {
+                return task;
+            }
+
+            task = TranslateAndCacheAsync(message);
+            translationTasks[cacheKey] = task;
+            return task;
+        }
+
+        async Task<string> TranslateAndCacheAsync(string message)
+        {
+            string cacheKey = BuildTranslationCacheKey(message);
+            try
+            {
+                string translated = await GetSelectedTranslationService()
+                    .TranslateToJapaneseAsync(GetSelectedTranslationApiKey(), message, CancellationToken.None)
+                    .ConfigureAwait(true);
+                translationCache[cacheKey] = translated;
+                return translated;
+            }
+            finally
+            {
+                translationTasks.Remove(cacheKey);
+            }
+        }
+
+        bool HasTranslationCredentials()
+        {
+            return !string.IsNullOrWhiteSpace(GetSelectedTranslationApiKey());
+        }
+
+        string GetSelectedTranslationApiKey()
+        {
+            return settings.TranslationProvider == TranslationProvider.Google
+                ? settings.GoogleApiKey
+                : settings.DeepLApiKey;
+        }
+
+        ITranslationService GetSelectedTranslationService()
+        {
+            return translationServices[settings.TranslationProvider];
+        }
+
+        string GetTranslationProviderLabel()
+        {
+            return settings.TranslationProvider == TranslationProvider.Google
+                ? "Google Cloud Translation"
+                : "DeepL API Free";
+        }
+
+        string BuildTranslationCacheKey(string message)
+        {
+            return $"{settings.TranslationProvider}:{message}";
+        }
+
         void RunNotificationSubfeatures(string displayLine)
         {
             if (!ShouldNotify(displayLine))
@@ -554,6 +674,7 @@ namespace CgLogListener
         {
             txtCgLogPath.Text = settings.CgLogPath;
             lblDedupValue.Text = $"{settings.DeduplicationSeconds} 秒";
+            flowLogs.TranslationConfigured = HasTranslationCredentials();
             UpdateStatus(HasValidLogPath() ? "リアルタイム監視中" : "監視フォルダ未設定");
         }
 
@@ -609,6 +730,10 @@ namespace CgLogListener
         {
             watcher?.Dispose();
             notifyIcon?.Dispose();
+            foreach (var service in translationServices.Values.OfType<IDisposable>())
+            {
+                service.Dispose();
+            }
         }
 
         void StyleButton(Button button, bool primary)

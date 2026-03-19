@@ -21,6 +21,8 @@ namespace CgLogListener
         const int CardPaddingBottom = 12;
         const int HeaderBottomGap = 8;
         const int HeaderItemGap = 10;
+        const int HeaderButtonGap = 8;
+        const int TranslateButtonWidth = 92;
         const int CopyButtonWidth = 84;
         const int CopyButtonHeight = 32;
         const int ChipHeight = 23;
@@ -40,6 +42,9 @@ namespace CgLogListener
         readonly Size infiniteTextBox = new Size(int.MaxValue, int.MaxValue);
 
         HoverState hoverState = HoverState.None;
+        bool translationConfigured;
+
+        public event EventHandler<TranslateRequestedEventArgs> TranslateRequested;
 
         public BufferedFlowLayoutPanel()
         {
@@ -87,15 +92,34 @@ namespace CgLogListener
             Invalidate();
         }
 
+        public bool TranslationConfigured
+        {
+            get { return translationConfigured; }
+            set
+            {
+                if (translationConfigured == value)
+                {
+                    return;
+                }
+
+                translationConfigured = value;
+                Invalidate();
+            }
+        }
+
         public void RefreshEntry(DisplayedLogGroup entry)
         {
-            int index;
-            if (!rowIndices.TryGetValue(entry, out index))
+            if (!rowIndices.ContainsKey(entry))
             {
                 return;
             }
 
-            Invalidate(ToClientRectangle(rowLayouts[index].Bounds));
+            bool stickToBottom = IsNearBottom();
+            int scrollOffset = GetScrollOffset();
+
+            RebuildLayouts();
+            RestoreScrollOffset(stickToBottom ? int.MaxValue : scrollOffset);
+            Invalidate();
         }
 
         public void RefreshLayoutMetrics()
@@ -215,6 +239,9 @@ namespace CgLogListener
                 case InteractiveKind.Link:
                     TryOpenUrl(region.Value);
                     break;
+                case InteractiveKind.Translate:
+                    OnTranslateRequested(region.Entry);
+                    break;
             }
         }
 
@@ -254,7 +281,7 @@ namespace CgLogListener
         {
             int cardWidth = GetCardWidth();
             int messageWidth = Math.Max(220, cardWidth - AccentWidth - CardPaddingLeft - CardPaddingRight);
-            int lineCount = Math.Max(1, BuildWrappedLines(entry.Message, messageWidth).Count);
+            int lineCount = Math.Max(1, BuildWrappedLines(entry.VisibleMessage, messageWidth).Count);
             int messageHeight = lineCount * GetMessageLineHeight();
             int headerHeight = Math.Max(CopyButtonHeight, Math.Max(GetTextHeight(timeFont), ChipHeight));
             int totalHeight = CardPaddingTop + headerHeight + HeaderBottomGap + messageHeight + CardPaddingBottom;
@@ -309,6 +336,28 @@ namespace CgLogListener
                 }
 
                 var copyRect = new Rectangle(cardBounds.Right - CardPaddingRight - CopyButtonWidth, contentTop, CopyButtonWidth, CopyButtonHeight);
+                var translateRect = new Rectangle(copyRect.Left - HeaderButtonGap - TranslateButtonWidth, contentTop, TranslateButtonWidth, CopyButtonHeight);
+                bool translateHovered = hoverState.Matches(InteractiveKind.Translate, row.Entry, null);
+                bool translateActive = row.Entry.IsShowingTranslation && row.Entry.CanToggleTranslation;
+                string translateText = GetTranslateButtonText(row.Entry);
+                var translateBaseColor = translationConfigured ? countBackColor : Color.FromArgb(245, 247, 250);
+                var translateBackColor = translateActive
+                    ? accentColor
+                    : (translateHovered ? ControlPaint.Light(accentColor) : translateBaseColor);
+                var translateTextColor = translateActive
+                    ? Color.White
+                    : (translationConfigured ? accentColor : Color.FromArgb(120, 130, 142));
+
+                DrawButtonChip(
+                    graphics,
+                    translateRect,
+                    translateBackColor,
+                    borderColor,
+                    translateTextColor,
+                    translateText,
+                    copyFont);
+                interactiveRegions.Add(new InteractiveRegion(translateRect, InteractiveKind.Translate, row.Entry, null));
+
                 bool copyHovered = hoverState.Matches(InteractiveKind.Copy, row.Entry, null);
                 DrawButtonChip(
                     graphics,
@@ -328,14 +377,15 @@ namespace CgLogListener
         void DrawMessage(Graphics graphics, DisplayedLogGroup entry, Rectangle bounds, Brush textBrush)
         {
             var lineHeight = GetMessageLineHeight();
-            var lines = BuildWrappedLines(entry.Message, bounds.Width);
-            var matches = UrlRegex.Matches(entry.Message).Cast<Match>().ToList();
+            string visibleMessage = entry.VisibleMessage;
+            var lines = BuildWrappedLines(visibleMessage, bounds.Width);
+            var matches = UrlRegex.Matches(visibleMessage).Cast<Match>().ToList();
             int y = bounds.Top;
 
             foreach (var line in lines)
             {
                 int x = bounds.Left;
-                foreach (var fragment in BuildFragments(entry.Message, line, matches))
+                foreach (var fragment in BuildFragments(visibleMessage, line, matches))
                 {
                     if (string.IsNullOrEmpty(fragment.Text))
                     {
@@ -520,6 +570,26 @@ namespace CgLogListener
             return fittedLength;
         }
 
+        string GetTranslateButtonText(DisplayedLogGroup entry)
+        {
+            if (entry.TranslationState == TranslationState.InProgress)
+            {
+                return "翻訳中";
+            }
+
+            if (entry.TranslationState == TranslationState.Failed)
+            {
+                return "再試行";
+            }
+
+            if (entry.CanToggleTranslation)
+            {
+                return entry.IsShowingTranslation ? "原文" : "翻訳";
+            }
+
+            return translationConfigured ? "翻訳" : "翻訳";
+        }
+
         void DrawFilledChip(Graphics graphics, Rectangle rect, Color backColor, Color textColor, string text, Font font)
         {
             using (var backBrush = new SolidBrush(backColor))
@@ -638,6 +708,15 @@ namespace CgLogListener
             return null;
         }
 
+        void OnTranslateRequested(DisplayedLogGroup entry)
+        {
+            var handler = TranslateRequested;
+            if (handler != null)
+            {
+                handler(this, new TranslateRequestedEventArgs(entry));
+            }
+        }
+
         static void TryCopy(string text)
         {
             if (string.IsNullOrWhiteSpace(text))
@@ -720,7 +799,18 @@ namespace CgLogListener
         enum InteractiveKind
         {
             Copy,
-            Link
+            Link,
+            Translate
+        }
+
+        public sealed class TranslateRequestedEventArgs : EventArgs
+        {
+            public TranslateRequestedEventArgs(DisplayedLogGroup entry)
+            {
+                Entry = entry;
+            }
+
+            public DisplayedLogGroup Entry { get; }
         }
 
         sealed class InteractiveRegion

@@ -60,6 +60,7 @@
     <Reference Include="System.Core" />
     <Reference Include="System.Net.Http" />
     <Reference Include="System.Web" />
+    <Reference Include="System.Web.Extensions" />
     <Reference Include="System.Xml.Linq" />
     <Reference Include="System.Data.DataSetExtensions" />
     <Reference Include="Microsoft.CSharp" />
@@ -73,12 +74,16 @@
   <ItemGroup>
     <Compile Include="BufferedFlowLayoutPanel.cs" />
     <Compile Include="CgLogHandler.cs" />
+    <Compile Include="DeepLTranslationService.cs" />
     <Compile Include="DisplayedLogGroup.cs" />
     <Compile Include="FormSettings.cs" />
+    <Compile Include="GoogleTranslationService.cs" />
+    <Compile Include="ITranslationService.cs" />
     <Compile Include="LogCategoryPalette.cs" />
     <Compile Include="LogEntryControl.cs" />
     <Compile Include="LogLine.cs" />
     <Compile Include="NotificationPresets.cs" />
+    <Compile Include="TranslationProvider.cs" />
     <Compile Include="FormMain.cs">
       <SubType>Form</SubType>
     </Compile>
