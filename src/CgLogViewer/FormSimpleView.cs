@@ -32,10 +32,12 @@ namespace CgLogViewer
         readonly Button btnFoodTimer = new Button();
         readonly BufferedFlowLayoutPanel flowLogs = new BufferedFlowLayoutPanel();
         readonly Label lblEmptyState = new Label();
+        bool suppressPreferenceEvents;
 
         public event EventHandler ReturnRequested;
         public event EventHandler FoodTimerRequested;
         public event EventHandler<BufferedFlowLayoutPanel.TranslateRequestedEventArgs> TranslateRequested;
+        public event EventHandler PreferencesChanged;
 
         public FormSimpleView()
         {
@@ -146,6 +148,9 @@ namespace CgLogViewer
             Controls.Add(panelLogHost);
             Controls.Add(panelTop);
 
+            LocationChanged += FormSimpleView_PreferencesChanged;
+            SizeChanged += FormSimpleView_PreferencesChanged;
+
             ResumeLayout(false);
         }
 
@@ -159,6 +164,44 @@ namespace CgLogViewer
         {
             get { return flowLogs.TranslationConfigured; }
             set { flowLogs.TranslationConfigured = value; }
+        }
+
+        public int SimpleRowHeight
+        {
+            get { return flowLogs.SimpleRowHeight; }
+            set
+            {
+                int next = Math.Max((int)numRowHeight.Minimum, Math.Min((int)numRowHeight.Maximum, value));
+                suppressPreferenceEvents = true;
+                try
+                {
+                    numRowHeight.Value = next;
+                    flowLogs.SimpleRowHeight = next;
+                }
+                finally
+                {
+                    suppressPreferenceEvents = false;
+                }
+            }
+        }
+
+        public float SimpleFontSize
+        {
+            get { return flowLogs.SimpleFontSize; }
+            set
+            {
+                decimal next = Math.Max(numFontSize.Minimum, Math.Min(numFontSize.Maximum, (decimal)value));
+                suppressPreferenceEvents = true;
+                try
+                {
+                    numFontSize.Value = next;
+                    flowLogs.SimpleFontSize = (float)next;
+                }
+                finally
+                {
+                    suppressPreferenceEvents = false;
+                }
+            }
         }
 
         public void SetEntries(IReadOnlyList<DisplayedLogGroup> entries, bool scrollToLatest)
@@ -206,6 +249,20 @@ namespace CgLogViewer
             flowLogs.RefreshLayoutMetrics();
         }
 
+        public void ApplySavedBounds(Rectangle bounds)
+        {
+            suppressPreferenceEvents = true;
+            try
+            {
+                StartPosition = FormStartPosition.Manual;
+                Bounds = bounds;
+            }
+            finally
+            {
+                suppressPreferenceEvents = false;
+            }
+        }
+
         void FlowLogs_SizeChanged(object sender, EventArgs e)
         {
             flowLogs.RefreshLayoutMetrics();
@@ -214,11 +271,18 @@ namespace CgLogViewer
         void NumRowHeight_ValueChanged(object sender, EventArgs e)
         {
             flowLogs.SimpleRowHeight = Decimal.ToInt32(numRowHeight.Value);
+            RaisePreferencesChanged();
         }
 
         void NumFontSize_ValueChanged(object sender, EventArgs e)
         {
             flowLogs.SimpleFontSize = (float)numFontSize.Value;
+            RaisePreferencesChanged();
+        }
+
+        void FormSimpleView_PreferencesChanged(object sender, EventArgs e)
+        {
+            RaisePreferencesChanged();
         }
 
         void BtnReturnFullView_Click(object sender, EventArgs e)
@@ -262,6 +326,20 @@ namespace CgLogViewer
         void UpdateEmptyState(IReadOnlyList<DisplayedLogGroup> entries)
         {
             lblEmptyState.Visible = entries == null || entries.Count == 0;
+        }
+
+        void RaisePreferencesChanged()
+        {
+            if (suppressPreferenceEvents || !IsHandleCreated || WindowState != FormWindowState.Normal)
+            {
+                return;
+            }
+
+            var handler = PreferencesChanged;
+            if (handler != null)
+            {
+                handler(this, EventArgs.Empty);
+            }
         }
 
         protected override void WndProc(ref Message m)

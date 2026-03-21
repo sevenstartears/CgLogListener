@@ -2,6 +2,7 @@ using IniParser;
 using IniParser.Model;
 using System;
 using System.Collections.Generic;
+using System.Drawing;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -17,6 +18,10 @@ namespace CgLogViewer
         const string custmizeFileName = "custmize.dat";
         const int defaultDeduplicationSeconds = 2;
         const int defaultRealtimeDisplayCount = 250;
+        const int defaultSimpleViewWidth = 860;
+        const int defaultSimpleViewHeight = 620;
+        const int defaultSimpleViewRowHeight = 40;
+        const float defaultSimpleViewFontSize = 10.5F;
 
         public bool PlaySound { get; private set; }
         public int SoundVol { get; private set; }
@@ -29,6 +34,12 @@ namespace CgLogViewer
         public string DeepLApiKey { get; private set; }
         public string GoogleApiKey { get; private set; }
         public string OpenAIApiKey { get; private set; }
+        public int SimpleViewX { get; private set; }
+        public int SimpleViewY { get; private set; }
+        public int SimpleViewWidth { get; private set; }
+        public int SimpleViewHeight { get; private set; }
+        public int SimpleViewRowHeight { get; private set; }
+        public float SimpleViewFontSize { get; private set; }
         public Dictionary<string, bool> StandardTips { get; private set; } = new Dictionary<string, bool>();
         public List<string> CustomizeTips { get; private set; } = new List<string>();
 
@@ -86,6 +97,20 @@ namespace CgLogViewer
             DeepLApiKey = baseData[nameof(DeepLApiKey)] ?? string.Empty;
             GoogleApiKey = baseData[nameof(GoogleApiKey)] ?? string.Empty;
             OpenAIApiKey = baseData[nameof(OpenAIApiKey)] ?? string.Empty;
+            SimpleViewX = int.TryParse(baseData[nameof(SimpleViewX)], out int simpleViewX) ? simpleViewX : -1;
+            SimpleViewY = int.TryParse(baseData[nameof(SimpleViewY)], out int simpleViewY) ? simpleViewY : -1;
+            SimpleViewWidth = int.TryParse(baseData[nameof(SimpleViewWidth)], out int simpleViewWidth)
+                ? Math.Max(520, simpleViewWidth)
+                : defaultSimpleViewWidth;
+            SimpleViewHeight = int.TryParse(baseData[nameof(SimpleViewHeight)], out int simpleViewHeight)
+                ? Math.Max(360, simpleViewHeight)
+                : defaultSimpleViewHeight;
+            SimpleViewRowHeight = int.TryParse(baseData[nameof(SimpleViewRowHeight)], out int simpleViewRowHeight)
+                ? Math.Max(28, Math.Min(88, simpleViewRowHeight))
+                : defaultSimpleViewRowHeight;
+            SimpleViewFontSize = float.TryParse(baseData[nameof(SimpleViewFontSize)], out float simpleViewFontSize)
+                ? Math.Max(8F, Math.Min(18F, simpleViewFontSize))
+                : defaultSimpleViewFontSize;
 
             var standardTipData = iniData[settingsStandardTipsSection];
             foreach (var kd in standardTipData)
@@ -117,6 +142,12 @@ namespace CgLogViewer
             baseSection[nameof(DeepLApiKey)] = string.Empty;
             baseSection[nameof(GoogleApiKey)] = string.Empty;
             baseSection[nameof(OpenAIApiKey)] = string.Empty;
+            baseSection[nameof(SimpleViewX)] = "-1";
+            baseSection[nameof(SimpleViewY)] = "-1";
+            baseSection[nameof(SimpleViewWidth)] = defaultSimpleViewWidth.ToString();
+            baseSection[nameof(SimpleViewHeight)] = defaultSimpleViewHeight.ToString();
+            baseSection[nameof(SimpleViewRowHeight)] = defaultSimpleViewRowHeight.ToString();
+            baseSection[nameof(SimpleViewFontSize)] = defaultSimpleViewFontSize.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture);
 
             var fileIniDataParser = new FileIniDataParser();
             fileIniDataParser.WriteFile(settingsFileName, iniData);
@@ -139,6 +170,12 @@ namespace CgLogViewer
             baseSection[nameof(DeepLApiKey)] = DeepLApiKey ?? string.Empty;
             baseSection[nameof(GoogleApiKey)] = GoogleApiKey ?? string.Empty;
             baseSection[nameof(OpenAIApiKey)] = OpenAIApiKey ?? string.Empty;
+            baseSection[nameof(SimpleViewX)] = SimpleViewX.ToString();
+            baseSection[nameof(SimpleViewY)] = SimpleViewY.ToString();
+            baseSection[nameof(SimpleViewWidth)] = SimpleViewWidth.ToString();
+            baseSection[nameof(SimpleViewHeight)] = SimpleViewHeight.ToString();
+            baseSection[nameof(SimpleViewRowHeight)] = SimpleViewRowHeight.ToString();
+            baseSection[nameof(SimpleViewFontSize)] = SimpleViewFontSize.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture);
 
             var standardTipData = iniData[settingsStandardTipsSection];
             foreach (var kv in StandardTips)
@@ -232,6 +269,22 @@ namespace CgLogViewer
         internal void RemoveCustmizeTip(string value)
         {
             CustomizeTips.Remove(value);
+            UpdateConfig();
+        }
+
+        internal void SetSimpleViewWindowBounds(Rectangle bounds)
+        {
+            SimpleViewX = bounds.X;
+            SimpleViewY = bounds.Y;
+            SimpleViewWidth = Math.Max(520, bounds.Width);
+            SimpleViewHeight = Math.Max(360, bounds.Height);
+            UpdateConfig();
+        }
+
+        internal void SetSimpleViewAppearance(int rowHeight, float fontSize)
+        {
+            SimpleViewRowHeight = Math.Max(28, Math.Min(88, rowHeight));
+            SimpleViewFontSize = Math.Max(8F, Math.Min(18F, fontSize));
             UpdateConfig();
         }
 

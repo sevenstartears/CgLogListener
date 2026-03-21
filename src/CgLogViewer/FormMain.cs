@@ -971,9 +971,13 @@ namespace CgLogViewer
             }
 
             simpleViewForm = new FormSimpleView();
+            simpleViewForm.SimpleRowHeight = settings.SimpleViewRowHeight;
+            simpleViewForm.SimpleFontSize = settings.SimpleViewFontSize;
+            ApplySavedSimpleViewBounds();
             simpleViewForm.TranslateRequested += FlowLogs_TranslateRequested;
             simpleViewForm.ReturnRequested += SimpleViewForm_ReturnRequested;
             simpleViewForm.FoodTimerRequested += BtnFoodTimer_Click;
+            simpleViewForm.PreferencesChanged += SimpleViewForm_PreferencesChanged;
             simpleViewForm.FormClosed += SimpleViewForm_FormClosed;
             simpleViewForm.TranslationConfigured = HasTranslationCredentials();
         }
@@ -990,7 +994,13 @@ namespace CgLogViewer
                 return;
             }
 
+            SaveSimpleViewPreferences();
             ShowMainWindow();
+        }
+
+        void SimpleViewForm_PreferencesChanged(object sender, EventArgs e)
+        {
+            SaveSimpleViewPreferences();
         }
 
         void ReturnToFullView()
@@ -998,10 +1008,49 @@ namespace CgLogViewer
             ShowMainWindow();
             if (simpleViewForm != null && !simpleViewForm.IsDisposed)
             {
+                SaveSimpleViewPreferences();
+                simpleViewForm.PreferencesChanged -= SimpleViewForm_PreferencesChanged;
                 simpleViewForm.FormClosed -= SimpleViewForm_FormClosed;
                 simpleViewForm.Close();
                 simpleViewForm = null;
             }
+        }
+
+        void ApplySavedSimpleViewBounds()
+        {
+            if (simpleViewForm == null || simpleViewForm.IsDisposed)
+            {
+                return;
+            }
+
+            if (settings.SimpleViewX < 0 || settings.SimpleViewY < 0)
+            {
+                return;
+            }
+
+            var bounds = new Rectangle(
+                settings.SimpleViewX,
+                settings.SimpleViewY,
+                settings.SimpleViewWidth,
+                settings.SimpleViewHeight);
+
+            if (!Screen.AllScreens.Any(screen => screen.WorkingArea.IntersectsWith(bounds)))
+            {
+                return;
+            }
+
+            simpleViewForm.ApplySavedBounds(bounds);
+        }
+
+        void SaveSimpleViewPreferences()
+        {
+            if (simpleViewForm == null || simpleViewForm.IsDisposed)
+            {
+                return;
+            }
+
+            settings.SetSimpleViewAppearance(simpleViewForm.SimpleRowHeight, simpleViewForm.SimpleFontSize);
+            settings.SetSimpleViewWindowBounds(simpleViewForm.Bounds);
         }
 
         void FlowLogs_SizeChanged(object sender, EventArgs e)
