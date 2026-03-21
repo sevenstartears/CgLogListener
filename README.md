@@ -1,9 +1,9 @@
-# BlueCG ログビューア
+# CgLogViewer
 
-BlueCG のチャットログをリアルタイム表示する Windows デスクトップアプリです。  
+BlueCG のチャットログをリアルタイム表示する Windows デスクトップアプリ `CgLogViewer` です。  
 複数クライアント起動時に発生する同内容ログの重複をまとめつつ、カテゴリ分類、翻訳、通知、外部送信、お食事タイマーを 1 つのツールで扱えます。
 
-![BlueCG ログビューアのメイン画面](docs/logViewer.png)
+![CgLogViewer のメイン画面](docs/logViewer.png)
 
 ## 主な機能
 
@@ -70,14 +70,14 @@ BlueCG のチャットログをリアルタイム表示する Windows デスク�
 
 ## ビルド
 
-Visual Studio で `src/CgLogListener.sln` を開いて `Debug` または `Release` でビルドしてください。
+Visual Studio で `src/CgLogViewer.sln` を開いて `Debug` または `Release` でビルドしてください。
 
 依存ライブラリ:
 
 - `ini-parser`
 - `Newtonsoft.Json`
 
-NuGet 復元後に `src/CgLogListener/bin/Debug/CgLogListener.exe` が生成されます。
+NuGet 復元後に `src/CgLogViewer/bin/Debug/CgLogViewer.exe` が生成されます。
 
 ## 補足
 
