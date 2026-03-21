@@ -30,12 +30,14 @@ namespace CgLogViewer
         readonly NumericUpDown numFontSize = new NumericUpDown();
         readonly Button btnReturnFullView = new Button();
         readonly Button btnFoodTimer = new Button();
+        readonly Button btnNpcDialogue = new Button();
         readonly BufferedFlowLayoutPanel flowLogs = new BufferedFlowLayoutPanel();
         readonly Label lblEmptyState = new Label();
         bool suppressPreferenceEvents;
 
         public event EventHandler ReturnRequested;
         public event EventHandler FoodTimerRequested;
+        public event EventHandler NpcDialogueRequested;
         public event EventHandler<BufferedFlowLayoutPanel.TranslateRequestedEventArgs> TranslateRequested;
         public event EventHandler PreferencesChanged;
 
@@ -119,7 +121,18 @@ namespace CgLogViewer
             btnFoodTimer.Margin = new Padding(0, 0, 10, 0);
             btnFoodTimer.Click += BtnFoodTimer_Click;
 
+            btnNpcDialogue.Dock = DockStyle.Right;
+            btnNpcDialogue.Width = 154;
+            btnNpcDialogue.Text = "NPC会話抽出";
+            btnNpcDialogue.FlatStyle = FlatStyle.Flat;
+            btnNpcDialogue.BackColor = Color.FromArgb(248, 251, 255);
+            btnNpcDialogue.ForeColor = Color.FromArgb(31, 55, 81);
+            btnNpcDialogue.FlatAppearance.BorderColor = Color.FromArgb(194, 210, 226);
+            btnNpcDialogue.Margin = new Padding(0, 0, 10, 0);
+            btnNpcDialogue.Click += BtnNpcDialogue_Click;
+
             panelTop.Controls.Add(panelAdjustments);
+            panelTop.Controls.Add(btnNpcDialogue);
             panelTop.Controls.Add(btnFoodTimer);
             panelTop.Controls.Add(btnReturnFullView);
 
@@ -297,6 +310,15 @@ namespace CgLogViewer
         void BtnFoodTimer_Click(object sender, EventArgs e)
         {
             var handler = FoodTimerRequested;
+            if (handler != null)
+            {
+                handler(this, EventArgs.Empty);
+            }
+        }
+
+        void BtnNpcDialogue_Click(object sender, EventArgs e)
+        {
+            var handler = NpcDialogueRequested;
             if (handler != null)
             {
                 handler(this, EventArgs.Empty);

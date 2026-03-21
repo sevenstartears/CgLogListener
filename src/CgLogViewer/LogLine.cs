@@ -10,6 +10,7 @@ namespace CgLogViewer
         System,
         Party,
         Normal,
+        Npc,
         Other
     }
 

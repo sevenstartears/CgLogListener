@@ -33,16 +33,19 @@ namespace CgLogViewer
         readonly Dictionary<TranslationProvider, ITranslationService> translationServices = new Dictionary<TranslationProvider, ITranslationService>();
         readonly DiscordWebhookNotifier discordNotifier = new DiscordWebhookNotifier();
         readonly FoodCooldownTracker foodCooldownTracker = new FoodCooldownTracker();
+        readonly NpcDialogueBridgeServer npcDialogueBridgeServer;
         readonly Button btnRealtimeMode = new Button();
         readonly Button btnBrowseMode = new Button();
         readonly Button btnBrowseFile = new Button();
         readonly Button btnSimpleView = new Button();
         readonly Button btnFoodTimer = new Button();
+        readonly Button btnNpcDialogue = new Button();
         readonly MediaPlayer mp = new MediaPlayer();
 
         Settings settings;
         CgLogHandler watcher;
         FormFoodTimer foodTimerForm;
+        FormNpcDialogue npcDialogueForm;
         FormSimpleView simpleViewForm;
         bool isShuttingDown;
         MainLogDisplayMode currentDisplayMode = MainLogDisplayMode.Realtime;
@@ -55,6 +58,7 @@ namespace CgLogViewer
             ImeMode = ImeMode.OnHalf;
             Icon = Resource.icon;
             notifyIcon.Icon = Resource.icon;
+            npcDialogueBridgeServer = new NpcDialogueBridgeServer(HandleNpcDialogueSubmitted);
             translationServices[TranslationProvider.DeepL] = new DeepLTranslationService();
             translationServices[TranslationProvider.Google] = new GoogleTranslationService();
             translationServices[TranslationProvider.OpenAI] = new OpenAITranslationService();
@@ -66,6 +70,7 @@ namespace CgLogViewer
             StyleButton(btnBrowseFile, false);
             StyleButton(btnSimpleView, false);
             StyleButton(btnFoodTimer, false);
+            StyleButton(btnNpcDialogue, false);
             panelHeader.BackColor = Color.FromArgb(18, 93, 156);
             panelHeader.Height = 64;
             lblHeaderTitle.Visible = false;
@@ -95,11 +100,13 @@ namespace CgLogViewer
             btnBrowseFile.Click += BtnBrowseFile_Click;
             btnSimpleView.Click += BtnSimpleView_Click;
             btnFoodTimer.Click += BtnFoodTimer_Click;
+            btnNpcDialogue.Click += BtnNpcDialogue_Click;
         }
 
         void FrmMain_Load(object sender, EventArgs e)
         {
             settings = Settings.GetInstance();
+            npcDialogueBridgeServer.Start();
 
             RefreshSettingsSummary();
 
@@ -123,7 +130,7 @@ namespace CgLogViewer
 
         void InitializeCategoryFilterUi()
         {
-            panelToolbar.Height = 172;
+            panelToolbar.Height = 214;
             flowLogs.Padding = new Padding(0);
             lblModeLabel.AutoSize = true;
             lblModeLabel.ForeColor = Color.FromArgb(91, 102, 114);
@@ -171,20 +178,27 @@ namespace CgLogViewer
             btnSimpleView.Text = "シンプルビュー";
             btnSimpleView.UseVisualStyleBackColor = true;
             panelToolbar.Controls.Add(btnSimpleView);
-            btnOpenSettings.Location = new Point(900, 106);
+            btnNpcDialogue.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+            btnNpcDialogue.Location = new Point(900, 106);
+            btnNpcDialogue.Name = "btnNpcDialogue";
+            btnNpcDialogue.Size = new Size(160, 34);
+            btnNpcDialogue.TabIndex = 12;
+            btnNpcDialogue.Text = "NPC会話抽出";
+            btnNpcDialogue.UseVisualStyleBackColor = true;
+            panelToolbar.Controls.Add(btnNpcDialogue);
             lblCategoryFilter.AutoSize = true;
             lblCategoryFilter.ForeColor = Color.FromArgb(91, 102, 114);
-            lblCategoryFilter.Location = new Point(28, 121);
+            lblCategoryFilter.Location = new Point(28, 163);
 
             flowCategoryFilters.AutoSize = false;
             flowCategoryFilters.AutoScroll = false;
             flowCategoryFilters.WrapContents = false;
-            flowCategoryFilters.Location = new Point(102, 106);
+            flowCategoryFilters.Location = new Point(102, 148);
             flowCategoryFilters.Size = new Size(panelToolbar.ClientSize.Width - 126, 48);
             flowCategoryFilters.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
             flowCategoryFilters.Margin = new Padding(0);
 
-            foreach (var category in new[] { LogCategory.Normal, LogCategory.Party, LogCategory.Guild, LogCategory.System, LogCategory.Other })
+            foreach (var category in new[] { LogCategory.Normal, LogCategory.Party, LogCategory.Guild, LogCategory.Npc, LogCategory.System, LogCategory.Other })
             {
                 enabledCategories.Add(category);
                 var button = CreateCategoryFilterButton(category);
@@ -260,6 +274,7 @@ namespace CgLogViewer
             btnOpenSettings.Text = "表示と通知の設定";
             btnFoodTimer.Text = "お食事タイマー";
             btnClearLogs.Text = "ログ保存";
+            btnNpcDialogue.Text = "NPC会話抽出";
             lblHeaderVersion.Text = GetDisplayVersionText();
             LayoutHeaderVersion();
 
@@ -288,6 +303,7 @@ namespace CgLogViewer
             btnOpenSettings.Text = "表示と通知の設定";
             btnFoodTimer.Text = "お食事タイマー";
             btnSimpleView.Text = "シンプルビュー";
+            btnNpcDialogue.Text = "NPC会話抽出";
             btnClearLogs.Text = "ログ保存";
             lblHeaderVersion.Text = GetDisplayVersionText();
             LayoutHeaderVersion();
@@ -308,6 +324,7 @@ namespace CgLogViewer
             int rightEdge = panelToolbar.ClientSize.Width - 24;
             btnFoodTimer.Left = rightEdge - btnFoodTimer.Width;
             btnSimpleView.Left = rightEdge - btnSimpleView.Width;
+            btnNpcDialogue.Left = rightEdge - btnNpcDialogue.Width;
 
             int browseRight = btnFoodTimer.Left - 12;
             btnBrowseFile.Left = browseRight - btnBrowseFile.Width;
@@ -317,7 +334,7 @@ namespace CgLogViewer
             txtCgLogPath.Top = 64;
             int browseWidth = Math.Max(180, btnBrowseFile.Left - txtCgLogPath.Left - 8);
             txtCgLogPath.Width = browseWidth;
-            flowCategoryFilters.Width = Math.Max(320, rightEdge - flowCategoryFilters.Left);
+            flowCategoryFilters.Width = Math.Max(320, btnNpcDialogue.Left - flowCategoryFilters.Left - 12);
         }
 
         void PanelHeader_Resize(object sender, EventArgs e)
@@ -347,7 +364,7 @@ namespace CgLogViewer
                 return $"ver {version.Major}.{version.Minor}.{version.Build}";
             }
 
-            return "ver 0.1.2";
+            return "ver 0.1.3";
         }
 
         void BindWatcher(bool loadRecentLogs)
@@ -407,6 +424,24 @@ namespace CgLogViewer
             }
 
             AppendLog(e.LogLine, allowNotification: true, storeHistory: true, refreshUi: true);
+        }
+
+        void HandleNpcDialogueSubmitted(string message)
+        {
+            if (IsDisposed || string.IsNullOrWhiteSpace(message))
+            {
+                return;
+            }
+
+            if (InvokeRequired)
+            {
+                BeginInvoke((Action)(() => HandleNpcDialogueSubmitted(message)));
+                return;
+            }
+
+            var now = DateTime.Now;
+            var npcLog = new LogLine(now, now, message.Trim(), "NPC", LogCategory.Npc);
+            AppendLog(npcLog, allowNotification: false, storeHistory: true, refreshUi: true);
         }
 
         void AppendLog(LogLine log, bool allowNotification, bool storeHistory, bool refreshUi)
@@ -963,6 +998,42 @@ namespace CgLogViewer
             foodTimerForm.Activate();
         }
 
+        void BtnNpcDialogue_Click(object sender, EventArgs e)
+        {
+            if (!Program.IsCurrentProcessElevated())
+            {
+                Program.TryLaunchNpcDialogueAsAdministrator(this);
+                return;
+            }
+
+            EnsureNpcDialogueForm();
+
+            if (!npcDialogueForm.Visible)
+            {
+                npcDialogueForm.Show(this);
+            }
+
+            npcDialogueForm.WindowState = FormWindowState.Normal;
+            npcDialogueForm.Activate();
+        }
+
+        void EnsureNpcDialogueForm()
+        {
+            if (npcDialogueForm != null && !npcDialogueForm.IsDisposed)
+            {
+                npcDialogueForm.RefreshCandidates();
+                npcDialogueForm.RefreshTranslationState();
+                return;
+            }
+
+            npcDialogueForm = new FormNpcDialogue(
+                settings,
+                message => GetOrCreateTranslationTask(message),
+                () => HasTranslationCredentials(),
+                () => GetTranslationProviderLabel());
+            npcDialogueForm.RefreshTranslationState();
+        }
+
         void EnsureSimpleViewForm()
         {
             if (simpleViewForm != null && !simpleViewForm.IsDisposed)
@@ -977,6 +1048,7 @@ namespace CgLogViewer
             simpleViewForm.TranslateRequested += FlowLogs_TranslateRequested;
             simpleViewForm.ReturnRequested += SimpleViewForm_ReturnRequested;
             simpleViewForm.FoodTimerRequested += BtnFoodTimer_Click;
+            simpleViewForm.NpcDialogueRequested += BtnNpcDialogue_Click;
             simpleViewForm.PreferencesChanged += SimpleViewForm_PreferencesChanged;
             simpleViewForm.FormClosed += SimpleViewForm_FormClosed;
             simpleViewForm.TranslationConfigured = HasTranslationCredentials();
@@ -1011,6 +1083,7 @@ namespace CgLogViewer
                 SaveSimpleViewPreferences();
                 simpleViewForm.PreferencesChanged -= SimpleViewForm_PreferencesChanged;
                 simpleViewForm.FormClosed -= SimpleViewForm_FormClosed;
+                simpleViewForm.NpcDialogueRequested -= BtnNpcDialogue_Click;
                 simpleViewForm.Close();
                 simpleViewForm = null;
             }
@@ -1168,6 +1241,11 @@ namespace CgLogViewer
             {
                 simpleViewForm.TranslationConfigured = HasTranslationCredentials();
             }
+            if (npcDialogueForm != null && !npcDialogueForm.IsDisposed)
+            {
+                npcDialogueForm.RefreshCandidates();
+                npcDialogueForm.RefreshTranslationState();
+            }
 
             UpdateStatus(HasValidLogPath() ? "リアルタイム監視中" : "ゲームフォルダ未設定");
             ApplyDisplayModeVisualState();
@@ -1181,6 +1259,11 @@ namespace CgLogViewer
             if (simpleViewForm != null && !simpleViewForm.IsDisposed)
             {
                 simpleViewForm.TranslationConfigured = HasTranslationCredentials();
+            }
+            if (npcDialogueForm != null && !npcDialogueForm.IsDisposed)
+            {
+                npcDialogueForm.RefreshCandidates();
+                npcDialogueForm.RefreshTranslationState();
             }
             UpdateStatus(HasValidLogPath() ? "リアルタイム監視中" : "監視フォルダ未設定");
         }
@@ -1289,6 +1372,10 @@ namespace CgLogViewer
             {
                 foodTimerForm.Close();
             }
+            if (npcDialogueForm != null && !npcDialogueForm.IsDisposed)
+            {
+                npcDialogueForm.Close();
+            }
             if (simpleViewForm != null && !simpleViewForm.IsDisposed)
             {
                 simpleViewForm.Close();
@@ -1297,6 +1384,7 @@ namespace CgLogViewer
             {
                 service.Dispose();
             }
+            npcDialogueBridgeServer.Dispose();
             discordNotifier.Dispose();
         }
 

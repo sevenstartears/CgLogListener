@@ -16,6 +16,8 @@ namespace CgLogViewer
                     return "パーティ";
                 case LogCategory.Normal:
                     return "通常";
+                case LogCategory.Npc:
+                    return "NPC";
                 default:
                     return "その他";
             }
@@ -33,6 +35,8 @@ namespace CgLogViewer
                     return Color.FromArgb(177, 123, 24);
                 case LogCategory.Normal:
                     return Color.FromArgb(150, 77, 47);
+                case LogCategory.Npc:
+                    return Color.FromArgb(133, 65, 179);
                 default:
                     return Color.FromArgb(101, 111, 123);
             }
@@ -50,6 +54,8 @@ namespace CgLogViewer
                     return Color.FromArgb(255, 247, 232);
                 case LogCategory.Normal:
                     return Color.FromArgb(253, 241, 236);
+                case LogCategory.Npc:
+                    return Color.FromArgb(247, 239, 255);
                 default:
                     return Color.FromArgb(244, 247, 251);
             }

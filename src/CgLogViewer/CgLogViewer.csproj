@@ -23,7 +23,7 @@
     <UpdateRequired>false</UpdateRequired>
     <MapFileExtensions>true</MapFileExtensions>
     <ApplicationRevision>0</ApplicationRevision>
-    <ApplicationVersion>2.1.0.%2a</ApplicationVersion>
+    <ApplicationVersion>0.1.3.%2a</ApplicationVersion>
     <UseApplicationTrust>false</UseApplicationTrust>
     <BootstrapperEnabled>true</BootstrapperEnabled>
   </PropertyGroup>
@@ -81,6 +81,7 @@
     <Compile Include="FoodCooldownTracker.cs" />
     <Compile Include="FormSettings.cs" />
     <Compile Include="FormFoodTimer.cs" />
+    <Compile Include="FormNpcDialogue.cs" />
     <Compile Include="FormSimpleView.cs" />
     <Compile Include="GoogleTranslationService.cs" />
     <Compile Include="ITranslationService.cs" />
@@ -90,6 +91,8 @@
     <Compile Include="FoodTimerEntryControl.cs" />
     <Compile Include="LogLine.cs" />
     <Compile Include="NotificationPresets.cs" />
+    <Compile Include="NpcDialogueBridge.cs" />
+    <Compile Include="NpcDialogueReader.cs" />
     <Compile Include="OpenAITranslationService.cs" />
     <Compile Include="TranslationProvider.cs" />
     <Compile Include="FormMain.cs">
