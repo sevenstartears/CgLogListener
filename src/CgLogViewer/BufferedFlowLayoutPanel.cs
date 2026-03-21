@@ -35,10 +35,11 @@ namespace CgLogViewer
         const int ChipHeight = 23;
         const int ChipHorizontalPadding = 8;
         const int ContentBottomPadding = 8;
-        const int SimpleRowHeight = 40;
+        const int DefaultSimpleRowHeight = 40;
         const int SimpleMessageRightPadding = 6;
         const int SimpleExpandedTopPadding = 5;
         const int SimpleExpandedBottomPadding = 5;
+        const float DefaultSimpleFontSize = 10.5F;
 
         readonly Font timeFont = new Font("Yu Gothic UI Semibold", 10F, FontStyle.Bold);
         readonly Font categoryFont = new Font("Yu Gothic UI", 8F, FontStyle.Bold);
@@ -46,7 +47,6 @@ namespace CgLogViewer
         readonly Font messageFont = new Font("MingLiU", 11F, FontStyle.Bold, GraphicsUnit.Point, 136);
         readonly Font messageLinkFont = new Font("MingLiU", 11F, FontStyle.Bold | FontStyle.Underline, GraphicsUnit.Point, 136);
         readonly Font copyFont = new Font("Yu Gothic UI", 8.5F, FontStyle.Regular);
-        readonly Font simpleMessageFont = new Font("MingLiU", 10.5F, FontStyle.Bold, GraphicsUnit.Point, 136);
         readonly List<DisplayedLogGroup> entries = new List<DisplayedLogGroup>();
         readonly List<RowLayout> rowLayouts = new List<RowLayout>();
         readonly Dictionary<DisplayedLogGroup, int> rowIndices = new Dictionary<DisplayedLogGroup, int>();
@@ -60,6 +60,9 @@ namespace CgLogViewer
         bool translationConfigured;
         LogViewMode viewMode = LogViewMode.Full;
         DisplayedLogGroup contextMenuEntry;
+        Font simpleMessageFont;
+        int simpleRowHeight = DefaultSimpleRowHeight;
+        float simpleFontSize = DefaultSimpleFontSize;
 
         public event EventHandler<TranslateRequestedEventArgs> TranslateRequested;
 
@@ -69,6 +72,7 @@ namespace CgLogViewer
             DoubleBuffered = true;
             ResizeRedraw = true;
             BackColor = Color.FromArgb(243, 246, 251);
+            simpleMessageFont = CreateSimpleMessageFont(simpleFontSize);
 
             SetStyle(
                 ControlStyles.AllPaintingInWmPaint |
@@ -82,6 +86,41 @@ namespace CgLogViewer
             menuTranslate.Click += MenuTranslate_Click;
             menuCopy.Text = "コピー";
             menuCopy.Click += MenuCopy_Click;
+        }
+
+        public int SimpleRowHeight
+        {
+            get { return simpleRowHeight; }
+            set
+            {
+                int next = Math.Max(28, Math.Min(88, value));
+                if (simpleRowHeight == next)
+                {
+                    return;
+                }
+
+                simpleRowHeight = next;
+                RefreshLayoutMetrics();
+            }
+        }
+
+        public float SimpleFontSize
+        {
+            get { return simpleFontSize; }
+            set
+            {
+                float next = Math.Max(8F, Math.Min(18F, value));
+                if (Math.Abs(simpleFontSize - next) < 0.01F)
+                {
+                    return;
+                }
+
+                simpleFontSize = next;
+                var previousFont = simpleMessageFont;
+                simpleMessageFont = CreateSimpleMessageFont(simpleFontSize);
+                previousFont.Dispose();
+                RefreshLayoutMetrics();
+            }
         }
 
         public LogViewMode ViewMode
@@ -394,11 +433,11 @@ namespace CgLogViewer
             if (viewMode == LogViewMode.Simple)
             {
                 int simpleMessageWidth = Math.Max(220, cardWidth - AccentWidth - CardPaddingLeft - CardPaddingRight - SimpleMessageRightPadding);
-                int simpleHeight = SimpleRowHeight;
+                int simpleHeight = simpleRowHeight;
                 if (entry.IsExpandedInSimpleView && SimpleMessageNeedsExpansion(entry, simpleMessageWidth))
                 {
                     int simpleLineCount = Math.Max(1, BuildWrappedLines(NormalizeSingleLine(entry.VisibleMessage), simpleMessageWidth, simpleMessageFont).Count);
-                    simpleHeight = Math.Max(SimpleRowHeight, SimpleExpandedTopPadding + (simpleLineCount * GetSimpleMessageLineHeight()) + SimpleExpandedBottomPadding);
+                    simpleHeight = Math.Max(simpleRowHeight, SimpleExpandedTopPadding + (simpleLineCount * GetSimpleMessageLineHeight()) + SimpleExpandedBottomPadding);
                 }
 
                 return new RowLayout(entry, new Rectangle(0, y, cardWidth, simpleHeight), simpleMessageWidth, 0);
@@ -886,6 +925,11 @@ namespace CgLogViewer
         int GetSimpleMessageLineHeight()
         {
             return TextRenderer.MeasureText("測試", simpleMessageFont, infiniteTextBox, TextFormatFlags.NoPadding | TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine).Height;
+        }
+
+        static Font CreateSimpleMessageFont(float size)
+        {
+            return new Font("MingLiU", size, FontStyle.Bold, GraphicsUnit.Point, 136);
         }
 
         int GetCardWidth()

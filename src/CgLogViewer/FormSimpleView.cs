@@ -23,6 +23,11 @@ namespace CgLogViewer
         const int ResizeBorderSize = 6;
 
         readonly Panel panelTop = new Panel();
+        readonly FlowLayoutPanel panelAdjustments = new FlowLayoutPanel();
+        readonly Label lblRowHeight = new Label();
+        readonly NumericUpDown numRowHeight = new NumericUpDown();
+        readonly Label lblFontSize = new Label();
+        readonly NumericUpDown numFontSize = new NumericUpDown();
         readonly Button btnReturnFullView = new Button();
         readonly Button btnFoodTimer = new Button();
         readonly BufferedFlowLayoutPanel flowLogs = new BufferedFlowLayoutPanel();
@@ -47,10 +52,51 @@ namespace CgLogViewer
             Text = "CgLogViewer - シンプルビュー";
 
             panelTop.Dock = DockStyle.Top;
-            panelTop.Height = 64;
+            panelTop.Height = 72;
             panelTop.BackColor = Color.White;
-            panelTop.Padding = new Padding(16, 14, 16, 14);
+            panelTop.Padding = new Padding(14, 12, 14, 12);
             panelTop.MouseDown += PanelTop_MouseDown;
+
+            panelAdjustments.Dock = DockStyle.Left;
+            panelAdjustments.AutoSize = true;
+            panelAdjustments.AutoSizeMode = AutoSizeMode.GrowAndShrink;
+            panelAdjustments.WrapContents = false;
+            panelAdjustments.FlowDirection = FlowDirection.LeftToRight;
+            panelAdjustments.BackColor = Color.Transparent;
+            panelAdjustments.Padding = new Padding(0, 5, 0, 0);
+
+            lblRowHeight.AutoSize = true;
+            lblRowHeight.Margin = new Padding(0, 8, 8, 0);
+            lblRowHeight.ForeColor = Color.FromArgb(63, 74, 86);
+            lblRowHeight.Text = "カード高さ";
+
+            numRowHeight.Width = 64;
+            numRowHeight.Minimum = 28;
+            numRowHeight.Maximum = 88;
+            numRowHeight.Value = flowLogs.SimpleRowHeight;
+            numRowHeight.Margin = new Padding(0, 3, 14, 0);
+            numRowHeight.TextAlign = HorizontalAlignment.Center;
+            numRowHeight.ValueChanged += NumRowHeight_ValueChanged;
+
+            lblFontSize.AutoSize = true;
+            lblFontSize.Margin = new Padding(0, 8, 8, 0);
+            lblFontSize.ForeColor = Color.FromArgb(63, 74, 86);
+            lblFontSize.Text = "文字サイズ";
+
+            numFontSize.Width = 64;
+            numFontSize.Minimum = 8;
+            numFontSize.Maximum = 18;
+            numFontSize.DecimalPlaces = 1;
+            numFontSize.Increment = 0.5M;
+            numFontSize.Value = (decimal)flowLogs.SimpleFontSize;
+            numFontSize.Margin = new Padding(0, 3, 0, 0);
+            numFontSize.TextAlign = HorizontalAlignment.Center;
+            numFontSize.ValueChanged += NumFontSize_ValueChanged;
+
+            panelAdjustments.Controls.Add(lblRowHeight);
+            panelAdjustments.Controls.Add(numRowHeight);
+            panelAdjustments.Controls.Add(lblFontSize);
+            panelAdjustments.Controls.Add(numFontSize);
 
             btnReturnFullView.Dock = DockStyle.Right;
             btnReturnFullView.Width = 168;
@@ -71,6 +117,7 @@ namespace CgLogViewer
             btnFoodTimer.Margin = new Padding(0, 0, 10, 0);
             btnFoodTimer.Click += BtnFoodTimer_Click;
 
+            panelTop.Controls.Add(panelAdjustments);
             panelTop.Controls.Add(btnFoodTimer);
             panelTop.Controls.Add(btnReturnFullView);
 
@@ -162,6 +209,16 @@ namespace CgLogViewer
         void FlowLogs_SizeChanged(object sender, EventArgs e)
         {
             flowLogs.RefreshLayoutMetrics();
+        }
+
+        void NumRowHeight_ValueChanged(object sender, EventArgs e)
+        {
+            flowLogs.SimpleRowHeight = Decimal.ToInt32(numRowHeight.Value);
+        }
+
+        void NumFontSize_ValueChanged(object sender, EventArgs e)
+        {
+            flowLogs.SimpleFontSize = (float)numFontSize.Value;
         }
 
         void BtnReturnFullView_Click(object sender, EventArgs e)
