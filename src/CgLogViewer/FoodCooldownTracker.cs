@@ -25,10 +25,16 @@ namespace CgLogViewer
                 return false;
             }
 
+            var now = DateTime.Now;
+            if (logLine.EffectiveTimestamp.Add(CooldownDuration).Add(readyRetention) < now)
+            {
+                return false;
+            }
+
             lock (syncRoot)
             {
                 entries[targetCharacter] = new FoodCooldownEntry(targetCharacter, logLine.EffectiveTimestamp, logLine.DisplayLine, CooldownDuration);
-                PruneExpiredEntries(logLine.EffectiveTimestamp);
+                PruneExpiredEntries(now);
             }
 
             Changed?.Invoke(this, EventArgs.Empty);

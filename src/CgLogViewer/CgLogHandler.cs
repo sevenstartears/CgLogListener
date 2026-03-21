@@ -97,7 +97,7 @@ namespace CgLogViewer
                     var tailContent = ReadTailContent(filePath, Math.Max(safeCount, 120));
                     foreach (var rawLine in SplitLines(tailContent))
                     {
-                        var parsed = ParseLine(rawLine, filePath, File.GetLastWriteTime(filePath));
+                        var parsed = ParseLine(rawLine, filePath);
                         if (parsed != null)
                         {
                             results.Add(parsed);
