@@ -97,7 +97,7 @@ namespace CgLogViewer
                     var tailContent = ReadTailContent(filePath, Math.Max(safeCount, 120));
                     foreach (var rawLine in SplitLines(tailContent))
                     {
-                        var parsed = ParseLine(rawLine, filePath);
+                        var parsed = ParseLine(rawLine, filePath, File.GetLastWriteTime(filePath));
                         if (parsed != null)
                         {
                             results.Add(parsed);
@@ -111,7 +111,7 @@ namespace CgLogViewer
             }
 
             return results
-                .OrderBy(line => line.Timestamp)
+                .OrderBy(line => line.EffectiveTimestamp)
                 .Skip(Math.Max(0, results.Count - safeCount))
                 .ToList();
         }
@@ -145,7 +145,7 @@ namespace CgLogViewer
             }
 
             return results
-                .OrderBy(line => line.Timestamp)
+                .OrderBy(line => line.EffectiveTimestamp)
                 .Skip(results.Count - safeCount)
                 .ToList();
         }
@@ -262,7 +262,7 @@ namespace CgLogViewer
 
                         foreach (var segment in segments)
                         {
-                            var parsed = ParseLine(segment, filePath);
+                            var parsed = ParseLine(segment, filePath, DateTime.Now);
                             if (parsed != null)
                             {
                                 OnNewLog?.Invoke(this, new LogLineEventArgs(parsed));
@@ -485,12 +485,12 @@ namespace CgLogViewer
             return (c >= '\uE000' && c <= '\uF8FF');
         }
 
-        LogLine ParseLine(string line, string filePath)
+        LogLine ParseLine(string line, string filePath, DateTime? observedAt = null)
         {
-            return ParseStandaloneLine(line, filePath);
+            return ParseStandaloneLine(line, filePath, observedAt);
         }
 
-        static LogLine ParseStandaloneLine(string line, string filePath)
+        static LogLine ParseStandaloneLine(string line, string filePath, DateTime? observedAt = null)
         {
             if (string.IsNullOrWhiteSpace(line))
             {
@@ -515,12 +515,42 @@ namespace CgLogViewer
             }
 
             var logDate = ExtractLogDate(filePath) ?? DateTime.Today;
+            var parsedTimestamp = logDate.Date.Add(timePart.TimeOfDay);
+            var effectiveTimestamp = observedAt.HasValue
+                ? ResolveObservedTimestamp(observedAt.Value, timePart.TimeOfDay)
+                : parsedTimestamp;
             var normalizedMessage = message.Trim();
             return new LogLine(
-                logDate.Date.Add(timePart.TimeOfDay),
+                parsedTimestamp,
+                effectiveTimestamp,
                 normalizedMessage,
                 Path.GetFileName(filePath),
                 LogLine.ClassifyMessage(normalizedMessage));
+        }
+
+        static DateTime ResolveObservedTimestamp(DateTime observedAt, TimeSpan timeOfDay)
+        {
+            var sameDay = observedAt.Date.Add(timeOfDay);
+            var previousDay = sameDay.AddDays(-1);
+            var nextDay = sameDay.AddDays(1);
+
+            var best = sameDay;
+            var bestDistance = Math.Abs((observedAt - sameDay).Ticks);
+
+            var previousDistance = Math.Abs((observedAt - previousDay).Ticks);
+            if (previousDistance < bestDistance)
+            {
+                best = previousDay;
+                bestDistance = previousDistance;
+            }
+
+            var nextDistance = Math.Abs((observedAt - nextDay).Ticks);
+            if (nextDistance < bestDistance)
+            {
+                best = nextDay;
+            }
+
+            return best;
         }
 
         static DateTime? ExtractLogDate(string filePath)

@@ -1,4 +1,5 @@
 using System;
+using System.Text;
 using System.Text.RegularExpressions;
 
 namespace CgLogViewer
@@ -19,18 +20,22 @@ namespace CgLogViewer
         static readonly Regex speakerRegex = new Regex(@"^(?<speaker>[^\[\]:\s][^:\s]{0,31}):\s+", RegexOptions.Compiled);
         static readonly Regex asciiSystemLeadRegex = new Regex(@"^[A-Za-z0-9._-]{2,}[\u3000-\u30FF\u3400-\u9FFF\uF900-\uFAFF\uFF00-\uFFEF]", RegexOptions.Compiled);
 
-        public LogLine(DateTime timestamp, string message, string sourceFile, LogCategory category)
+        public LogLine(DateTime timestamp, DateTime effectiveTimestamp, string message, string sourceFile, LogCategory category)
         {
             Timestamp = timestamp;
+            EffectiveTimestamp = effectiveTimestamp;
             Message = message;
             SourceFile = sourceFile;
             Category = category;
+            DeduplicationKey = NormalizeForDeduplication(message);
         }
 
         public DateTime Timestamp { get; }
+        public DateTime EffectiveTimestamp { get; }
         public string Message { get; }
         public string SourceFile { get; }
         public LogCategory Category { get; }
+        public string DeduplicationKey { get; }
         public string DisplayLine => $"{Timestamp:HH:mm:ss} {Message}";
 
         public static LogCategory ClassifyMessage(string message)
@@ -89,6 +94,42 @@ namespace CgLogViewer
                 c == '【' ||
                 c == '（' ||
                 c == '(';
+        }
+
+        static string NormalizeForDeduplication(string message)
+        {
+            if (string.IsNullOrWhiteSpace(message))
+            {
+                return string.Empty;
+            }
+
+            var builder = new StringBuilder(message.Length);
+            bool previousWasWhitespace = false;
+
+            foreach (char c in message)
+            {
+                if (char.IsControl(c) && c != '\t')
+                {
+                    continue;
+                }
+
+                if (char.IsWhiteSpace(c))
+                {
+                    if (previousWasWhitespace)
+                    {
+                        continue;
+                    }
+
+                    builder.Append(' ');
+                    previousWasWhitespace = true;
+                    continue;
+                }
+
+                builder.Append(c);
+                previousWasWhitespace = false;
+            }
+
+            return builder.ToString().Trim();
         }
     }
 

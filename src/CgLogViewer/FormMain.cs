@@ -454,12 +454,12 @@ namespace CgLogViewer
             for (int i = groups.Count - 1; i >= 0; i--)
             {
                 var group = groups[i];
-                if (group.Category != log.Category || group.Message != log.Message)
+                if (group.Category != log.Category || !string.Equals(group.DeduplicationKey, log.DeduplicationKey, StringComparison.Ordinal))
                 {
                     continue;
                 }
 
-                if (Math.Abs((log.Timestamp - group.LastTimestamp).TotalSeconds) <= window.TotalSeconds)
+                if (Math.Abs((log.EffectiveTimestamp - group.LastTimestamp).TotalSeconds) <= window.TotalSeconds)
                 {
                     return group;
                 }
@@ -1037,7 +1037,7 @@ namespace CgLogViewer
         void RebuildDisplayedLogs()
         {
             var snapshot = logHistory
-                .OrderBy(log => log.Timestamp)
+                .OrderBy(log => log.EffectiveTimestamp)
                 .ToList();
 
             ClearDisplayedLogs(clearHistory: false);

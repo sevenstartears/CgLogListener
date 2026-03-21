@@ -27,8 +27,8 @@ namespace CgLogViewer
 
             lock (syncRoot)
             {
-                entries[targetCharacter] = new FoodCooldownEntry(targetCharacter, logLine.Timestamp, logLine.DisplayLine, CooldownDuration);
-                PruneExpiredEntries(logLine.Timestamp);
+                entries[targetCharacter] = new FoodCooldownEntry(targetCharacter, logLine.EffectiveTimestamp, logLine.DisplayLine, CooldownDuration);
+                PruneExpiredEntries(logLine.EffectiveTimestamp);
             }
 
             Changed?.Invoke(this, EventArgs.Empty);

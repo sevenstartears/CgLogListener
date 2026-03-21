@@ -15,13 +15,15 @@ namespace CgLogViewer
         public DisplayedLogGroup(LogLine initialLog)
         {
             Message = initialLog.Message;
+            DeduplicationKey = initialLog.DeduplicationKey;
             Category = initialLog.Category;
             DisplayTimestamp = initialLog.Timestamp;
-            LastTimestamp = initialLog.Timestamp;
+            LastTimestamp = initialLog.EffectiveTimestamp;
             Count = 1;
         }
 
         public string Message { get; }
+        public string DeduplicationKey { get; }
         public LogCategory Category { get; }
         public DateTime DisplayTimestamp { get; }
         public DateTime LastTimestamp { get; private set; }
@@ -38,7 +40,7 @@ namespace CgLogViewer
 
         public void Merge(LogLine log)
         {
-            LastTimestamp = log.Timestamp;
+            LastTimestamp = log.EffectiveTimestamp;
             Count++;
         }
 
