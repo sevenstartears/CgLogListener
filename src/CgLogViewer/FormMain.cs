@@ -364,7 +364,7 @@ namespace CgLogViewer
                 return $"ver {version.Major}.{version.Minor}.{version.Build}";
             }
 
-            return "ver 0.1.3";
+            return "ver 0.1.4";
         }
 
         void BindWatcher(bool loadRecentLogs)

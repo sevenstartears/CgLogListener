@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
 using System.Linq;
+using System.Security.Cryptography;
 using System.Text;
 
 namespace CgLogViewer
@@ -16,6 +17,7 @@ namespace CgLogViewer
         const string settingsBaseSection = "base";
         const string settingsStandardTipsSection = "standard tips";
         const string custmizeFileName = "custmize.dat";
+        const string encryptedValuePrefix = "enc:";
         const int defaultDeduplicationSeconds = 2;
         const int defaultRealtimeDisplayCount = 250;
         const int defaultSimpleViewWidth = 860;
@@ -99,10 +101,10 @@ namespace CgLogViewer
             DiscordNotificationEnabled = baseData[nameof(DiscordNotificationEnabled)] == "1" ||
                 (baseData[nameof(DiscordNotificationEnabled)] == null && legacyCustomNotifyTypes.Contains("Discord"));
             DiscordWebhookUrl = baseData[nameof(DiscordWebhookUrl)] ?? TryLoadLegacyDiscordWebhookUrl();
-            DeepLApiKey = baseData[nameof(DeepLApiKey)] ?? string.Empty;
+            DeepLApiKey = DecryptSecretOrPlain(baseData[nameof(DeepLApiKey)]);
             DeepLGlossaryId = baseData[nameof(DeepLGlossaryId)] ?? string.Empty;
-            GoogleApiKey = baseData[nameof(GoogleApiKey)] ?? string.Empty;
-            OpenAIApiKey = baseData[nameof(OpenAIApiKey)] ?? string.Empty;
+            GoogleApiKey = DecryptSecretOrPlain(baseData[nameof(GoogleApiKey)]);
+            OpenAIApiKey = DecryptSecretOrPlain(baseData[nameof(OpenAIApiKey)]);
             OpenAIReasoningEffort = Enum.TryParse(baseData[nameof(OpenAIReasoningEffort)], out OpenAIReasoningEffort reasoningEffort)
                 ? reasoningEffort
                 : defaultOpenAIReasoningEffort;
@@ -182,10 +184,10 @@ namespace CgLogViewer
             baseSection[nameof(DiscordNotificationEnabled)] = DiscordNotificationEnabled ? "1" : "0";
             baseSection[nameof(DiscordWebhookUrl)] = DiscordWebhookUrl ?? string.Empty;
             baseSection[nameof(TranslationProvider)] = TranslationProvider.ToString();
-            baseSection[nameof(DeepLApiKey)] = DeepLApiKey ?? string.Empty;
+            baseSection[nameof(DeepLApiKey)] = EncryptSecret(DeepLApiKey);
             baseSection[nameof(DeepLGlossaryId)] = DeepLGlossaryId ?? string.Empty;
-            baseSection[nameof(GoogleApiKey)] = GoogleApiKey ?? string.Empty;
-            baseSection[nameof(OpenAIApiKey)] = OpenAIApiKey ?? string.Empty;
+            baseSection[nameof(GoogleApiKey)] = EncryptSecret(GoogleApiKey);
+            baseSection[nameof(OpenAIApiKey)] = EncryptSecret(OpenAIApiKey);
             baseSection[nameof(OpenAIReasoningEffort)] = OpenAIReasoningEffort.ToString();
             baseSection[nameof(SimpleViewX)] = SimpleViewX.ToString();
             baseSection[nameof(SimpleViewY)] = SimpleViewY.ToString();
@@ -343,6 +345,55 @@ namespace CgLogViewer
             {
                 return string.Empty;
             }
+        }
+
+        static string EncryptSecret(string value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                return string.Empty;
+            }
+
+            try
+            {
+                byte[] plainBytes = Encoding.UTF8.GetBytes(value.Trim());
+                byte[] protectedBytes = ProtectedData.Protect(plainBytes, GetEntropyBytes(), DataProtectionScope.CurrentUser);
+                return encryptedValuePrefix + Convert.ToBase64String(protectedBytes);
+            }
+            catch
+            {
+                return value.Trim();
+            }
+        }
+
+        static string DecryptSecretOrPlain(string value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                return string.Empty;
+            }
+
+            if (!value.StartsWith(encryptedValuePrefix, StringComparison.Ordinal))
+            {
+                return value;
+            }
+
+            try
+            {
+                string encoded = value.Substring(encryptedValuePrefix.Length);
+                byte[] protectedBytes = Convert.FromBase64String(encoded);
+                byte[] plainBytes = ProtectedData.Unprotect(protectedBytes, GetEntropyBytes(), DataProtectionScope.CurrentUser);
+                return Encoding.UTF8.GetString(plainBytes);
+            }
+            catch
+            {
+                return string.Empty;
+            }
+        }
+
+        static byte[] GetEntropyBytes()
+        {
+            return Encoding.UTF8.GetBytes("CgLogViewer.Settings");
         }
 
         const string LegacyCustomNotifyTypes = "CustomNotifyTypes";
