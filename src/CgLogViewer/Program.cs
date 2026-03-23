@@ -95,7 +95,7 @@ namespace CgLogViewer
             var form = new FormNpcDialogue(
                 settings,
                 message => translationServices[settings.TranslationProvider]
-                    .TranslateToJapaneseAsync(GetSelectedTranslationApiKey(settings), message, CancellationToken.None),
+                    .TranslateToJapaneseAsync(GetSelectedTranslationApiKey(settings), message, CancellationToken.None, settings.OpenAIReasoningEffort),
                 () => !string.IsNullOrWhiteSpace(GetSelectedTranslationApiKey(settings)),
                 () => GetTranslationProviderLabel(settings));
 

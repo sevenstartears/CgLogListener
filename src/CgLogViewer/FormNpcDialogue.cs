@@ -16,6 +16,7 @@ namespace CgLogViewer
         readonly ComboBox cmbProcesses = new ComboBox();
         readonly Button btnRefreshProcesses = new Button();
         readonly NumericUpDown numLineCount = new NumericUpDown();
+        readonly CheckBox chkAutoAdd = new CheckBox();
         readonly Button btnAddToMain = new Button();
         readonly Button btnTranslate = new Button();
         readonly Button btnCopy = new Button();
@@ -25,6 +26,7 @@ namespace CgLogViewer
 
         string currentDialogue = string.Empty;
         string translatedDialogue = string.Empty;
+        string lastSubmittedDialogue = string.Empty;
         TranslationState translationState = TranslationState.None;
         bool isShowingTranslation;
         bool isPolling;
@@ -114,6 +116,13 @@ namespace CgLogViewer
             numLineCount.Margin = new Padding(0, 4, 8, 0);
             numLineCount.ValueChanged += NumLineCount_ValueChanged;
 
+            chkAutoAdd.AutoSize = true;
+            chkAutoAdd.Margin = new Padding(8, 8, 0, 0);
+            chkAutoAdd.ForeColor = Color.FromArgb(63, 74, 86);
+            chkAutoAdd.Text = "自動的にログに追加する";
+            chkAutoAdd.Checked = settings.NpcDialogueAutoAdd;
+            chkAutoAdd.CheckedChanged += ChkAutoAdd_CheckedChanged;
+
             lblStatus.AutoSize = false;
             lblStatus.Dock = DockStyle.Fill;
             lblStatus.Margin = new Padding(0, 7, 0, 0);
@@ -129,7 +138,9 @@ namespace CgLogViewer
             layoutTop.Controls.Add(lblLineCount, 0, 1);
             layoutTop.Controls.Add(numLineCount, 1, 1);
             layoutTop.Controls.Add(lblStatus, 2, 1);
-            layoutTop.SetColumnSpan(lblStatus, 5);
+            layoutTop.Controls.Add(chkAutoAdd, 5, 1);
+            layoutTop.SetColumnSpan(lblStatus, 3);
+            layoutTop.SetColumnSpan(chkAutoAdd, 2);
             panelTop.Controls.Add(layoutTop);
 
             var panelBody = new Panel
@@ -232,6 +243,11 @@ namespace CgLogViewer
             _ = PollSelectedProcessAsync();
         }
 
+        void ChkAutoAdd_CheckedChanged(object sender, EventArgs e)
+        {
+            settings.SetNpcDialogueAutoAdd(chkAutoAdd.Checked);
+        }
+
         async void BtnTranslate_Click(object sender, EventArgs e)
         {
             if (string.IsNullOrWhiteSpace(currentDialogue))
@@ -318,7 +334,7 @@ namespace CgLogViewer
                 return;
             }
 
-            if (NpcDialogueBridgeClient.TrySend(currentDialogue))
+            if (TrySubmitCurrentDialogue())
             {
                 lblStatus.Text = "メインビューへ NPC 会話を追加しました。";
             }
@@ -390,6 +406,11 @@ namespace CgLogViewer
                 translationState = TranslationState.None;
                 isShowingTranslation = false;
                 txtDialogue.Text = GetVisibleDialogue();
+
+                if (!string.IsNullOrWhiteSpace(currentDialogue) && chkAutoAdd.Checked)
+                {
+                    TrySubmitCurrentDialogue();
+                }
             }
 
             lblStatus.Text = string.IsNullOrWhiteSpace(text)
@@ -403,9 +424,31 @@ namespace CgLogViewer
         {
             currentDialogue = string.Empty;
             translatedDialogue = string.Empty;
+            lastSubmittedDialogue = string.Empty;
             translationState = TranslationState.None;
             isShowingTranslation = false;
             txtDialogue.Text = string.Empty;
+        }
+
+        bool TrySubmitCurrentDialogue()
+        {
+            if (string.IsNullOrWhiteSpace(currentDialogue))
+            {
+                return false;
+            }
+
+            if (string.Equals(lastSubmittedDialogue, currentDialogue, StringComparison.Ordinal))
+            {
+                return true;
+            }
+
+            if (!NpcDialogueBridgeClient.TrySend(currentDialogue))
+            {
+                return false;
+            }
+
+            lastSubmittedDialogue = currentDialogue;
+            return true;
         }
 
         string GetVisibleDialogue()
