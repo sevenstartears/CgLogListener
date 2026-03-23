@@ -637,7 +637,7 @@ namespace CgLogViewer
             try
             {
                 string translated = await GetSelectedTranslationService()
-                    .TranslateToJapaneseAsync(GetSelectedTranslationApiKey(), message, CancellationToken.None)
+                    .TranslateToJapaneseAsync(GetSelectedTranslationApiKey(), message, CancellationToken.None, settings.OpenAIReasoningEffort)
                     .ConfigureAwait(true);
                 translationCache[cacheKey] = translated;
                 return translated;
@@ -686,7 +686,16 @@ namespace CgLogViewer
 
         string BuildTranslationCacheKey(string message)
         {
-            return $"{settings.TranslationProvider}:{message}";
+            string dictionaryVersion = File.Exists(TranslationDictionaryStore.Instance.FilePath)
+                ? File.GetLastWriteTimeUtc(TranslationDictionaryStore.Instance.FilePath).Ticks.ToString()
+                : "0";
+            string providerVariant = settings.TranslationProvider == TranslationProvider.DeepL
+                ? settings.DeepLGlossaryId ?? string.Empty
+                : settings.TranslationProvider == TranslationProvider.OpenAI
+                    ? settings.OpenAIReasoningEffort.ToString()
+                    : string.Empty;
+
+            return $"{settings.TranslationProvider}:{providerVariant}:{dictionaryVersion}:{message}";
         }
 
         void RunNotificationSubfeatures(LogLine log)

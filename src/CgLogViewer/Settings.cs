@@ -22,6 +22,8 @@ namespace CgLogViewer
         const int defaultSimpleViewHeight = 620;
         const int defaultSimpleViewRowHeight = 40;
         const float defaultSimpleViewFontSize = 10.5F;
+        const bool defaultNpcDialogueAutoAdd = false;
+        static readonly OpenAIReasoningEffort defaultOpenAIReasoningEffort = OpenAIReasoningEffort.Medium;
 
         public bool PlaySound { get; private set; }
         public int SoundVol { get; private set; }
@@ -32,14 +34,17 @@ namespace CgLogViewer
         public string DiscordWebhookUrl { get; private set; }
         public TranslationProvider TranslationProvider { get; private set; }
         public string DeepLApiKey { get; private set; }
+        public string DeepLGlossaryId { get; private set; }
         public string GoogleApiKey { get; private set; }
         public string OpenAIApiKey { get; private set; }
+        public OpenAIReasoningEffort OpenAIReasoningEffort { get; private set; }
         public int SimpleViewX { get; private set; }
         public int SimpleViewY { get; private set; }
         public int SimpleViewWidth { get; private set; }
         public int SimpleViewHeight { get; private set; }
         public int SimpleViewRowHeight { get; private set; }
         public float SimpleViewFontSize { get; private set; }
+        public bool NpcDialogueAutoAdd { get; private set; }
         public Dictionary<string, bool> StandardTips { get; private set; } = new Dictionary<string, bool>();
         public List<string> CustomizeTips { get; private set; } = new List<string>();
 
@@ -95,8 +100,12 @@ namespace CgLogViewer
                 (baseData[nameof(DiscordNotificationEnabled)] == null && legacyCustomNotifyTypes.Contains("Discord"));
             DiscordWebhookUrl = baseData[nameof(DiscordWebhookUrl)] ?? TryLoadLegacyDiscordWebhookUrl();
             DeepLApiKey = baseData[nameof(DeepLApiKey)] ?? string.Empty;
+            DeepLGlossaryId = baseData[nameof(DeepLGlossaryId)] ?? string.Empty;
             GoogleApiKey = baseData[nameof(GoogleApiKey)] ?? string.Empty;
             OpenAIApiKey = baseData[nameof(OpenAIApiKey)] ?? string.Empty;
+            OpenAIReasoningEffort = Enum.TryParse(baseData[nameof(OpenAIReasoningEffort)], out OpenAIReasoningEffort reasoningEffort)
+                ? reasoningEffort
+                : defaultOpenAIReasoningEffort;
             SimpleViewX = int.TryParse(baseData[nameof(SimpleViewX)], out int simpleViewX) ? simpleViewX : -1;
             SimpleViewY = int.TryParse(baseData[nameof(SimpleViewY)], out int simpleViewY) ? simpleViewY : -1;
             SimpleViewWidth = int.TryParse(baseData[nameof(SimpleViewWidth)], out int simpleViewWidth)
@@ -111,6 +120,9 @@ namespace CgLogViewer
             SimpleViewFontSize = float.TryParse(baseData[nameof(SimpleViewFontSize)], out float simpleViewFontSize)
                 ? Math.Max(8F, Math.Min(18F, simpleViewFontSize))
                 : defaultSimpleViewFontSize;
+            NpcDialogueAutoAdd = baseData[nameof(NpcDialogueAutoAdd)] == null
+                ? defaultNpcDialogueAutoAdd
+                : baseData[nameof(NpcDialogueAutoAdd)] == "1";
 
             var standardTipData = iniData[settingsStandardTipsSection];
             foreach (var kd in standardTipData)
@@ -140,14 +152,17 @@ namespace CgLogViewer
             baseSection[nameof(DiscordWebhookUrl)] = string.Empty;
             baseSection[nameof(TranslationProvider)] = TranslationProvider.DeepL.ToString();
             baseSection[nameof(DeepLApiKey)] = string.Empty;
+            baseSection[nameof(DeepLGlossaryId)] = string.Empty;
             baseSection[nameof(GoogleApiKey)] = string.Empty;
             baseSection[nameof(OpenAIApiKey)] = string.Empty;
+            baseSection[nameof(OpenAIReasoningEffort)] = defaultOpenAIReasoningEffort.ToString();
             baseSection[nameof(SimpleViewX)] = "-1";
             baseSection[nameof(SimpleViewY)] = "-1";
             baseSection[nameof(SimpleViewWidth)] = defaultSimpleViewWidth.ToString();
             baseSection[nameof(SimpleViewHeight)] = defaultSimpleViewHeight.ToString();
             baseSection[nameof(SimpleViewRowHeight)] = defaultSimpleViewRowHeight.ToString();
             baseSection[nameof(SimpleViewFontSize)] = defaultSimpleViewFontSize.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture);
+            baseSection[nameof(NpcDialogueAutoAdd)] = defaultNpcDialogueAutoAdd ? "1" : "0";
 
             var fileIniDataParser = new FileIniDataParser();
             fileIniDataParser.WriteFile(settingsFileName, iniData);
@@ -168,14 +183,17 @@ namespace CgLogViewer
             baseSection[nameof(DiscordWebhookUrl)] = DiscordWebhookUrl ?? string.Empty;
             baseSection[nameof(TranslationProvider)] = TranslationProvider.ToString();
             baseSection[nameof(DeepLApiKey)] = DeepLApiKey ?? string.Empty;
+            baseSection[nameof(DeepLGlossaryId)] = DeepLGlossaryId ?? string.Empty;
             baseSection[nameof(GoogleApiKey)] = GoogleApiKey ?? string.Empty;
             baseSection[nameof(OpenAIApiKey)] = OpenAIApiKey ?? string.Empty;
+            baseSection[nameof(OpenAIReasoningEffort)] = OpenAIReasoningEffort.ToString();
             baseSection[nameof(SimpleViewX)] = SimpleViewX.ToString();
             baseSection[nameof(SimpleViewY)] = SimpleViewY.ToString();
             baseSection[nameof(SimpleViewWidth)] = SimpleViewWidth.ToString();
             baseSection[nameof(SimpleViewHeight)] = SimpleViewHeight.ToString();
             baseSection[nameof(SimpleViewRowHeight)] = SimpleViewRowHeight.ToString();
             baseSection[nameof(SimpleViewFontSize)] = SimpleViewFontSize.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture);
+            baseSection[nameof(NpcDialogueAutoAdd)] = NpcDialogueAutoAdd ? "1" : "0";
 
             var standardTipData = iniData[settingsStandardTipsSection];
             foreach (var kv in StandardTips)
@@ -242,6 +260,12 @@ namespace CgLogViewer
             UpdateConfig();
         }
 
+        internal void SetDeepLGlossaryId(string value)
+        {
+            DeepLGlossaryId = value?.Trim() ?? string.Empty;
+            UpdateConfig();
+        }
+
         internal void SetGoogleApiKey(string value)
         {
             GoogleApiKey = value?.Trim() ?? string.Empty;
@@ -251,6 +275,12 @@ namespace CgLogViewer
         internal void SetOpenAIApiKey(string value)
         {
             OpenAIApiKey = value?.Trim() ?? string.Empty;
+            UpdateConfig();
+        }
+
+        internal void SetOpenAIReasoningEffort(OpenAIReasoningEffort value)
+        {
+            OpenAIReasoningEffort = value;
             UpdateConfig();
         }
 
@@ -285,6 +315,12 @@ namespace CgLogViewer
         {
             SimpleViewRowHeight = Math.Max(28, Math.Min(88, rowHeight));
             SimpleViewFontSize = Math.Max(8F, Math.Min(18F, fontSize));
+            UpdateConfig();
+        }
+
+        internal void SetNpcDialogueAutoAdd(bool value)
+        {
+            NpcDialogueAutoAdd = value;
             UpdateConfig();
         }
 

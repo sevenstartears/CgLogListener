@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
@@ -6,7 +6,7 @@ using System.Windows.Forms;
 
 namespace CgLogViewer
 {
-    public class FormSettings : Form
+    public sealed class FormSettings : Form
     {
         readonly Settings settings;
         readonly TextBox txtLogPath = new TextBox();
@@ -22,6 +22,9 @@ namespace CgLogViewer
         readonly TextBox txtDeepLApiKey = new TextBox();
         readonly TextBox txtGoogleApiKey = new TextBox();
         readonly TextBox txtOpenAIApiKey = new TextBox();
+        readonly Label lblOpenAIReasoningEffort = new Label();
+        readonly ComboBox cmbOpenAIReasoningEffort = new ComboBox();
+        readonly Button btnUploadGlossary = new Button();
         readonly Label lblTranslationHint = new Label();
         readonly ListBox listCustomKeywords = new ListBox();
         readonly Dictionary<string, CheckBox> presetCheckBoxes = new Dictionary<string, CheckBox>();
@@ -29,7 +32,7 @@ namespace CgLogViewer
 
         public FormSettings(Settings settings)
         {
-            this.settings = settings;
+            this.settings = settings ?? throw new ArgumentNullException(nameof(settings));
             selectedLogPath = settings.CgLogPath;
 
             InitializeComponent();
@@ -61,24 +64,22 @@ namespace CgLogViewer
                 BackColor = Color.FromArgb(18, 93, 156),
                 Padding = new Padding(24, 18, 24, 12),
             };
-            var lblTitle = new Label
+            panelHeader.Controls.Add(new Label
             {
                 AutoSize = true,
                 ForeColor = Color.White,
                 Font = new Font("Yu Gothic UI Semibold", 18F, FontStyle.Bold),
                 Text = "表示と通知の設定",
                 Location = new Point(0, 0),
-            };
-            var lblSubtitle = new Label
+            });
+            panelHeader.Controls.Add(new Label
             {
                 AutoSize = true,
                 ForeColor = Color.FromArgb(220, 238, 255),
                 Font = new Font("Yu Gothic UI", 9.5F, FontStyle.Regular),
-                Text = "ログ表示のまとめ秒数、通知音、外部送信の設定をここで変更できます。",
+                Text = "ログ表示、通知、翻訳の設定をここで変更できます。",
                 Location = new Point(2, 42),
-            };
-            panelHeader.Controls.Add(lblTitle);
-            panelHeader.Controls.Add(lblSubtitle);
+            });
 
             var panelTopActions = new Panel
             {
@@ -87,7 +88,22 @@ namespace CgLogViewer
                 BackColor = Color.White,
                 Padding = new Padding(24, 12, 24, 12),
             };
-            var panelTopActionButtons = new FlowLayoutPanel
+            panelTopActions.Controls.Add(new Label
+            {
+                AutoSize = true,
+                ForeColor = Color.FromArgb(91, 102, 114),
+                Location = new Point(24, 24),
+                Text = "変更内容は保存ボタンで反映されます。",
+            });
+
+            var btnTopClose = CreateSecondaryButton("閉じる", new Size(128, 40));
+            btnTopClose.DialogResult = DialogResult.Cancel;
+            btnTopClose.Margin = new Padding(0, 0, 12, 0);
+
+            var btnTopSave = CreatePrimaryButton("保存", new Size(148, 40));
+            btnTopSave.Click += BtnSave_Click;
+
+            var topActions = new FlowLayoutPanel
             {
                 Dock = DockStyle.Right,
                 AutoSize = true,
@@ -98,41 +114,9 @@ namespace CgLogViewer
                 Margin = new Padding(0),
                 Padding = new Padding(0),
             };
-            var lblTopHint = new Label
-            {
-                AutoSize = true,
-                ForeColor = Color.FromArgb(91, 102, 114),
-                Location = new Point(24, 24),
-                Text = "変更内容は保存ボタンで反映されます。",
-            };
-            var btnTopClose = new Button
-            {
-                DialogResult = DialogResult.Cancel,
-                Text = "閉じる",
-                Width = 128,
-                Height = 40,
-                Margin = new Padding(0, 0, 12, 0),
-            };
-            btnTopClose.FlatStyle = FlatStyle.Flat;
-            btnTopClose.FlatAppearance.BorderColor = Color.FromArgb(204, 214, 224);
-            btnTopClose.BackColor = Color.White;
-
-            var btnTopSave = new Button
-            {
-                Text = "保存",
-                Width = 148,
-                Height = 40,
-                Margin = new Padding(0),
-            };
-            btnTopSave.FlatStyle = FlatStyle.Flat;
-            btnTopSave.FlatAppearance.BorderColor = Color.FromArgb(18, 93, 156);
-            btnTopSave.BackColor = Color.FromArgb(18, 93, 156);
-            btnTopSave.ForeColor = Color.White;
-            btnTopSave.Click += BtnSave_Click;
-            panelTopActionButtons.Controls.Add(btnTopClose);
-            panelTopActionButtons.Controls.Add(btnTopSave);
-            panelTopActions.Controls.Add(lblTopHint);
-            panelTopActions.Controls.Add(panelTopActionButtons);
+            topActions.Controls.Add(btnTopClose);
+            topActions.Controls.Add(btnTopSave);
+            panelTopActions.Controls.Add(topActions);
 
             var panelContent = new Panel
             {
@@ -150,23 +134,26 @@ namespace CgLogViewer
                 WrapContents = false,
                 Width = 780,
             };
-
             flowSections.Controls.Add(CreateGeneralSection());
             flowSections.Controls.Add(CreateNotificationSection());
             flowSections.Controls.Add(CreateCustomKeywordSection());
             flowSections.Controls.Add(CreateTranslationSection());
             flowSections.Controls.Add(CreateExternalNotificationSection());
-
             panelContent.Controls.Add(flowSections);
 
-            var panelButtons = new Panel
+            var panelBottom = new Panel
             {
                 Dock = DockStyle.Bottom,
                 Height = 82,
                 BackColor = Color.White,
                 Padding = new Padding(24, 18, 24, 18),
             };
-            var panelBottomActionButtons = new FlowLayoutPanel
+            var btnCancel = CreateSecondaryButton("閉じる", new Size(128, 40));
+            btnCancel.DialogResult = DialogResult.Cancel;
+            btnCancel.Margin = new Padding(0, 0, 12, 0);
+            var btnSave = CreatePrimaryButton("設定を保存", new Size(148, 40));
+            btnSave.Click += BtnSave_Click;
+            var bottomActions = new FlowLayoutPanel
             {
                 Dock = DockStyle.Right,
                 AutoSize = true,
@@ -177,41 +164,15 @@ namespace CgLogViewer
                 Margin = new Padding(0),
                 Padding = new Padding(0),
             };
-
-            var btnCancel = new Button
-            {
-                DialogResult = DialogResult.Cancel,
-                Text = "閉じる",
-                Width = 128,
-                Height = 40,
-                Margin = new Padding(0, 0, 12, 0),
-            };
-            btnCancel.FlatStyle = FlatStyle.Flat;
-            btnCancel.FlatAppearance.BorderColor = Color.FromArgb(204, 214, 224);
-            btnCancel.BackColor = Color.White;
-
-            var btnSave = new Button
-            {
-                Text = "設定を保存",
-                Width = 148,
-                Height = 40,
-                Margin = new Padding(0),
-            };
-            btnSave.FlatStyle = FlatStyle.Flat;
-            btnSave.FlatAppearance.BorderColor = Color.FromArgb(18, 93, 156);
-            btnSave.BackColor = Color.FromArgb(18, 93, 156);
-            btnSave.ForeColor = Color.White;
-            btnSave.Click += BtnSave_Click;
-
-            panelBottomActionButtons.Controls.Add(btnCancel);
-            panelBottomActionButtons.Controls.Add(btnSave);
-            panelButtons.Controls.Add(panelBottomActionButtons);
+            bottomActions.Controls.Add(btnCancel);
+            bottomActions.Controls.Add(btnSave);
+            panelBottom.Controls.Add(bottomActions);
 
             AcceptButton = btnSave;
             CancelButton = btnCancel;
 
             Controls.Add(panelContent);
-            Controls.Add(panelButtons);
+            Controls.Add(panelBottom);
             Controls.Add(panelTopActions);
             Controls.Add(panelHeader);
 
@@ -224,63 +185,56 @@ namespace CgLogViewer
 
             var lblPath = CreateSectionLabel("ゲームフォルダ");
             lblPath.Location = new Point(20, 40);
+            section.Controls.Add(lblPath);
 
             txtLogPath.Location = new Point(20, 66);
             txtLogPath.ReadOnly = true;
             txtLogPath.Width = 590;
             txtLogPath.BackColor = Color.White;
+            section.Controls.Add(txtLogPath);
 
-            var btnBrowse = new Button
-            {
-                Text = "参照...",
-                Location = new Point(626, 64),
-                Size = new Size(90, 32),
-            };
-            StyleSecondaryButton(btnBrowse);
+            var btnBrowse = CreateSecondaryButton("参照...", new Size(90, 32));
+            btnBrowse.Location = new Point(626, 64);
             btnBrowse.Click += BtnBrowse_Click;
+            section.Controls.Add(btnBrowse);
 
             var lblDedup = CreateSectionLabel("同一ログのまとめ秒数");
             lblDedup.Location = new Point(20, 112);
+            section.Controls.Add(lblDedup);
 
             numDedupSeconds.Location = new Point(20, 138);
             numDedupSeconds.Minimum = 0;
             numDedupSeconds.Maximum = 30;
             numDedupSeconds.Width = 100;
+            section.Controls.Add(numDedupSeconds);
 
-            var lblDedupHint = new Label
+            section.Controls.Add(new Label
             {
                 AutoSize = true,
                 ForeColor = Color.FromArgb(91, 102, 114),
                 Location = new Point(132, 141),
                 Text = "近い時刻に流れた同じ本文のログを 1 件にまとめます。",
-            };
+            });
 
-            var lblRealtimeCount = CreateSectionLabel("リアルタイム表示件数");
-            lblRealtimeCount.Location = new Point(20, 168);
+            var lblRealtime = CreateSectionLabel("リアルタイム表示件数");
+            lblRealtime.Location = new Point(20, 168);
+            section.Controls.Add(lblRealtime);
 
             numRealtimeDisplayCount.Location = new Point(20, 194);
             numRealtimeDisplayCount.Minimum = 20;
             numRealtimeDisplayCount.Maximum = 2000;
             numRealtimeDisplayCount.Increment = 10;
             numRealtimeDisplayCount.Width = 100;
+            section.Controls.Add(numRealtimeDisplayCount);
 
-            var lblRealtimeHint = new Label
+            section.Controls.Add(new Label
             {
                 AutoSize = true,
                 ForeColor = Color.FromArgb(91, 102, 114),
                 Location = new Point(132, 197),
-                Text = "リアルタイム監視モードで表示する直近ログ件数です。",
-            };
+                Text = "リアルタイム監視モードで表示する、重複統合後の件数です。",
+            });
 
-            section.Controls.Add(lblPath);
-            section.Controls.Add(txtLogPath);
-            section.Controls.Add(btnBrowse);
-            section.Controls.Add(lblDedup);
-            section.Controls.Add(numDedupSeconds);
-            section.Controls.Add(lblDedupHint);
-            section.Controls.Add(lblRealtimeCount);
-            section.Controls.Add(numRealtimeDisplayCount);
-            section.Controls.Add(lblRealtimeHint);
             section.Height = 250;
             return section;
         }
@@ -292,10 +246,12 @@ namespace CgLogViewer
             chkPlaySound.AutoSize = true;
             chkPlaySound.Location = new Point(20, 42);
             chkPlaySound.Text = "通知時に SE を再生";
+            section.Controls.Add(chkPlaySound);
 
             lblSoundValue.AutoSize = true;
             lblSoundValue.Location = new Point(20, 80);
             lblSoundValue.ForeColor = Color.FromArgb(91, 102, 114);
+            section.Controls.Add(lblSoundValue);
 
             trackSoundVolume.Location = new Point(20, 98);
             trackSoundVolume.AutoSize = false;
@@ -304,9 +260,11 @@ namespace CgLogViewer
             trackSoundVolume.TickFrequency = 1;
             trackSoundVolume.Width = 280;
             trackSoundVolume.ValueChanged += TrackSoundVolume_ValueChanged;
+            section.Controls.Add(trackSoundVolume);
 
             var lblPresetTitle = CreateSectionLabel("標準通知ルール");
             lblPresetTitle.Location = new Point(20, 144);
+            section.Controls.Add(lblPresetTitle);
 
             var presetPanel = new TableLayoutPanel
             {
@@ -333,11 +291,6 @@ namespace CgLogViewer
             }
 
             presetPanel.Height = (presetPanel.RowCount * 34) + 8;
-
-            section.Controls.Add(chkPlaySound);
-            section.Controls.Add(lblSoundValue);
-            section.Controls.Add(trackSoundVolume);
-            section.Controls.Add(lblPresetTitle);
             section.Controls.Add(presetPanel);
             section.Height = presetPanel.Bottom + 24;
             return section;
@@ -347,39 +300,28 @@ namespace CgLogViewer
         {
             var section = CreateSectionPanel("カスタムキーワード通知");
 
-            var lblHint = new Label
+            section.Controls.Add(new Label
             {
                 AutoSize = true,
                 Location = new Point(20, 42),
                 ForeColor = Color.FromArgb(91, 102, 114),
                 Text = "形式: キーワード|除外語1,除外語2",
-            };
+            });
 
             listCustomKeywords.Location = new Point(20, 72);
             listCustomKeywords.Size = new Size(580, 132);
-
-            var btnAdd = new Button
-            {
-                Text = "追加",
-                Location = new Point(616, 72),
-                Size = new Size(84, 34),
-            };
-            StyleSecondaryButton(btnAdd);
-            btnAdd.Click += BtnAdd_Click;
-
-            var btnRemove = new Button
-            {
-                Text = "削除",
-                Location = new Point(616, 114),
-                Size = new Size(84, 34),
-            };
-            StyleSecondaryButton(btnRemove);
-            btnRemove.Click += BtnRemove_Click;
-
-            section.Controls.Add(lblHint);
             section.Controls.Add(listCustomKeywords);
+
+            var btnAdd = CreateSecondaryButton("追加", new Size(84, 34));
+            btnAdd.Location = new Point(616, 72);
+            btnAdd.Click += BtnAdd_Click;
             section.Controls.Add(btnAdd);
+
+            var btnRemove = CreateSecondaryButton("削除", new Size(84, 34));
+            btnRemove.Location = new Point(616, 114);
+            btnRemove.Click += BtnRemove_Click;
             section.Controls.Add(btnRemove);
+
             section.Height = 236;
             return section;
         }
@@ -390,6 +332,7 @@ namespace CgLogViewer
 
             var lblProvider = CreateSectionLabel("翻訳プロバイダ");
             lblProvider.Location = new Point(20, 42);
+            section.Controls.Add(lblProvider);
 
             cmbTranslationProvider.DropDownStyle = ComboBoxStyle.DropDownList;
             cmbTranslationProvider.Location = new Point(20, 68);
@@ -401,66 +344,99 @@ namespace CgLogViewer
                 "OpenAI API"
             });
             cmbTranslationProvider.SelectedIndexChanged += CmbTranslationProvider_SelectedIndexChanged;
+            section.Controls.Add(cmbTranslationProvider);
+
+            var btnEditDictionary = CreateSecondaryButton("辞書を編集...", new Size(120, 32));
+            btnEditDictionary.Location = new Point(256, 66);
+            btnEditDictionary.Click += BtnEditDictionary_Click;
+            section.Controls.Add(btnEditDictionary);
+
+            btnUploadGlossary.Text = "用語集をアップロード";
+            btnUploadGlossary.Size = new Size(186, 32);
+            btnUploadGlossary.Location = new Point(388, 66);
+            btnUploadGlossary.FlatStyle = FlatStyle.Flat;
+            btnUploadGlossary.FlatAppearance.BorderColor = Color.FromArgb(194, 210, 226);
+            btnUploadGlossary.BackColor = Color.FromArgb(248, 251, 255);
+            btnUploadGlossary.ForeColor = Color.FromArgb(31, 55, 81);
+            btnUploadGlossary.Click += BtnUploadGlossary_Click;
+            section.Controls.Add(btnUploadGlossary);
 
             lblTranslationKey.AutoSize = true;
             lblTranslationKey.Font = new Font("Yu Gothic UI", 9F, FontStyle.Regular);
             lblTranslationKey.ForeColor = Color.FromArgb(33, 52, 72);
             lblTranslationKey.BackColor = Color.White;
             lblTranslationKey.Location = new Point(20, 110);
+            section.Controls.Add(lblTranslationKey);
 
             txtDeepLApiKey.Location = new Point(20, 136);
             txtDeepLApiKey.Width = 680;
             txtDeepLApiKey.UseSystemPasswordChar = true;
+            section.Controls.Add(txtDeepLApiKey);
 
             txtGoogleApiKey.Location = new Point(20, 136);
             txtGoogleApiKey.Width = 680;
             txtGoogleApiKey.UseSystemPasswordChar = true;
+            section.Controls.Add(txtGoogleApiKey);
 
             txtOpenAIApiKey.Location = new Point(20, 136);
             txtOpenAIApiKey.Width = 680;
             txtOpenAIApiKey.UseSystemPasswordChar = true;
+            section.Controls.Add(txtOpenAIApiKey);
+
+            lblOpenAIReasoningEffort.AutoSize = true;
+            lblOpenAIReasoningEffort.Font = new Font("Yu Gothic UI", 9F, FontStyle.Regular);
+            lblOpenAIReasoningEffort.ForeColor = Color.FromArgb(33, 52, 72);
+            lblOpenAIReasoningEffort.BackColor = Color.White;
+            lblOpenAIReasoningEffort.Location = new Point(20, 170);
+            lblOpenAIReasoningEffort.Text = "OpenAI reasoning_effort";
+            section.Controls.Add(lblOpenAIReasoningEffort);
+
+            cmbOpenAIReasoningEffort.DropDownStyle = ComboBoxStyle.DropDownList;
+            cmbOpenAIReasoningEffort.Location = new Point(20, 196);
+            cmbOpenAIReasoningEffort.Width = 180;
+            cmbOpenAIReasoningEffort.Items.AddRange(new object[]
+            {
+                OpenAIReasoningEffortHelper.GetLabel(OpenAIReasoningEffort.Low),
+                OpenAIReasoningEffortHelper.GetLabel(OpenAIReasoningEffort.Medium),
+                OpenAIReasoningEffortHelper.GetLabel(OpenAIReasoningEffort.High),
+            });
+            section.Controls.Add(cmbOpenAIReasoningEffort);
 
             lblTranslationHint.AutoSize = true;
-            lblTranslationHint.Location = new Point(20, 170);
+            lblTranslationHint.MaximumSize = new Size(680, 0);
+            lblTranslationHint.Location = new Point(20, 240);
             lblTranslationHint.ForeColor = Color.FromArgb(91, 102, 114);
-
-            section.Controls.Add(lblProvider);
-            section.Controls.Add(cmbTranslationProvider);
-            section.Controls.Add(lblTranslationKey);
-            section.Controls.Add(txtDeepLApiKey);
-            section.Controls.Add(txtGoogleApiKey);
-            section.Controls.Add(txtOpenAIApiKey);
             section.Controls.Add(lblTranslationHint);
-            section.Height = 222;
+
+            section.Height = 320;
             return section;
         }
 
         Control CreateExternalNotificationSection()
         {
-            var section = CreateSectionPanel("外部送信");
+            var section = CreateSectionPanel("外部通知");
 
             chkDiscord.AutoSize = true;
             chkDiscord.Location = new Point(20, 42);
-            chkDiscord.Text = "Discord に送信";
+            chkDiscord.Text = "Discord に通知";
+            section.Controls.Add(chkDiscord);
 
             var lblDiscordWebhook = CreateSectionLabel("Discord Webhook URL");
             lblDiscordWebhook.Location = new Point(20, 78);
+            section.Controls.Add(lblDiscordWebhook);
 
             txtDiscordWebhookUrl.Location = new Point(20, 104);
             txtDiscordWebhookUrl.Width = 680;
+            section.Controls.Add(txtDiscordWebhookUrl);
 
-            var lblDiscord = new Label
+            section.Controls.Add(new Label
             {
                 AutoSize = true,
                 Location = new Point(20, 142),
                 ForeColor = Color.FromArgb(91, 102, 114),
-                Text = "通知が一致した時だけ、この Webhook URL に直接送信します。",
-            };
+                Text = "通知したい場合だけ、この Webhook URL に送信します。",
+            });
 
-            section.Controls.Add(chkDiscord);
-            section.Controls.Add(lblDiscordWebhook);
-            section.Controls.Add(txtDiscordWebhookUrl);
-            section.Controls.Add(lblDiscord);
             section.Height = 194;
             return section;
         }
@@ -473,17 +449,14 @@ namespace CgLogViewer
                 Width = 720,
                 Margin = new Padding(0, 0, 0, 14),
             };
-
-            var lblTitle = new Label
+            panel.Controls.Add(new Label
             {
                 AutoSize = true,
                 Font = new Font("Yu Gothic UI Semibold", 11F, FontStyle.Bold),
                 ForeColor = Color.FromArgb(33, 52, 72),
                 Location = new Point(18, 10),
                 Text = title,
-            };
-
-            panel.Controls.Add(lblTitle);
+            });
             return panel;
         }
 
@@ -498,19 +471,39 @@ namespace CgLogViewer
             };
         }
 
-        void StyleSecondaryButton(Button button)
+        Button CreateSecondaryButton(string text, Size size)
         {
-            button.FlatStyle = FlatStyle.Flat;
+            var button = new Button
+            {
+                Text = text,
+                Size = size,
+                FlatStyle = FlatStyle.Flat,
+                BackColor = Color.FromArgb(248, 251, 255),
+                ForeColor = Color.FromArgb(31, 55, 81),
+            };
             button.FlatAppearance.BorderColor = Color.FromArgb(194, 210, 226);
-            button.BackColor = Color.FromArgb(248, 251, 255);
-            button.ForeColor = Color.FromArgb(31, 55, 81);
+            return button;
+        }
+
+        Button CreatePrimaryButton(string text, Size size)
+        {
+            var button = new Button
+            {
+                Text = text,
+                Size = size,
+                FlatStyle = FlatStyle.Flat,
+                BackColor = Color.FromArgb(18, 93, 156),
+                ForeColor = Color.White,
+            };
+            button.FlatAppearance.BorderColor = Color.FromArgb(18, 93, 156);
+            return button;
         }
 
         void LoadSettings()
         {
             txtLogPath.Text = selectedLogPath;
-            numDedupSeconds.Value = (decimal)Math.Max((int)numDedupSeconds.Minimum, Math.Min((int)numDedupSeconds.Maximum, settings.DeduplicationSeconds));
-            numRealtimeDisplayCount.Value = (decimal)Math.Max((int)numRealtimeDisplayCount.Minimum, Math.Min((int)numRealtimeDisplayCount.Maximum, settings.RealtimeDisplayCount));
+            numDedupSeconds.Value = Math.Max(numDedupSeconds.Minimum, Math.Min(numDedupSeconds.Maximum, settings.DeduplicationSeconds));
+            numRealtimeDisplayCount.Value = Math.Max(numRealtimeDisplayCount.Minimum, Math.Min(numRealtimeDisplayCount.Maximum, settings.RealtimeDisplayCount));
             chkPlaySound.Checked = settings.PlaySound;
             trackSoundVolume.Value = Math.Max(trackSoundVolume.Minimum, Math.Min(trackSoundVolume.Maximum, settings.SoundVol));
             chkDiscord.Checked = settings.DiscordNotificationEnabled;
@@ -519,12 +512,13 @@ namespace CgLogViewer
             txtDeepLApiKey.Text = settings.DeepLApiKey ?? string.Empty;
             txtGoogleApiKey.Text = settings.GoogleApiKey ?? string.Empty;
             txtOpenAIApiKey.Text = settings.OpenAIApiKey ?? string.Empty;
+            cmbOpenAIReasoningEffort.SelectedIndex = GetOpenAIReasoningEffortIndex(settings.OpenAIReasoningEffort);
             UpdateTranslationProviderUi();
 
             foreach (var preset in NotificationPresets.All)
             {
-                settings.StandardTips.TryGetValue(preset.Key, out bool isEnabled);
-                presetCheckBoxes[preset.Key].Checked = isEnabled;
+                settings.StandardTips.TryGetValue(preset.Key, out bool enabled);
+                presetCheckBoxes[preset.Key].Checked = enabled;
             }
 
             listCustomKeywords.Items.Clear();
@@ -540,7 +534,7 @@ namespace CgLogViewer
         {
             using (var dialog = new FolderBrowserDialog())
             {
-                dialog.Description = @"Xg がインストールされているフォルダを選択してください (例: D:\CrossGate\)";
+                dialog.Description = @"XG のインストールフォルダを選択してください (例: D:\Games\BlueCrossgate)";
                 dialog.ShowNewFolderButton = false;
                 dialog.SelectedPath = selectedLogPath;
 
@@ -590,6 +584,33 @@ namespace CgLogViewer
             UpdateTranslationProviderUi();
         }
 
+        void BtnEditDictionary_Click(object sender, EventArgs e)
+        {
+            using (var dialog = new FormTranslationDictionaryEditor(TranslationDictionaryStore.Instance))
+            {
+                dialog.ShowDialog(this);
+            }
+        }
+
+        async void BtnUploadGlossary_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                btnUploadGlossary.Enabled = false;
+                string glossaryId = await DeepLGlossaryManager.UploadAsync(txtDeepLApiKey.Text).ConfigureAwait(true);
+                settings.SetDeepLGlossaryId(glossaryId);
+                MessageBox.Show(this, "DeepL の用語集をアップロードしました。", "用語集アップロード", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(this, $"用語集アップロードに失敗しました。\r\n{ex.Message}", "用語集アップロード", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            }
+            finally
+            {
+                btnUploadGlossary.Enabled = true;
+            }
+        }
+
         void UpdateSoundValueLabel()
         {
             lblSoundValue.Text = $"SE 音量: {trackSoundVolume.Value} / 10";
@@ -615,7 +636,7 @@ namespace CgLogViewer
 
             var result = MessageBox.Show(
                 this,
-                "設定内容が保存されていません。保存して閉じますか？",
+                "設定に未保存の変更があります。保存して閉じますか？",
                 "設定の確認",
                 MessageBoxButtons.YesNoCancel,
                 MessageBoxIcon.Question);
@@ -660,15 +681,16 @@ namespace CgLogViewer
                 cmbTranslationProvider.SelectedIndex != GetProviderIndex(settings.TranslationProvider) ||
                 !string.Equals(txtDeepLApiKey.Text ?? string.Empty, settings.DeepLApiKey ?? string.Empty, StringComparison.Ordinal) ||
                 !string.Equals(txtGoogleApiKey.Text ?? string.Empty, settings.GoogleApiKey ?? string.Empty, StringComparison.Ordinal) ||
-                !string.Equals(txtOpenAIApiKey.Text ?? string.Empty, settings.OpenAIApiKey ?? string.Empty, StringComparison.Ordinal))
+                !string.Equals(txtOpenAIApiKey.Text ?? string.Empty, settings.OpenAIApiKey ?? string.Empty, StringComparison.Ordinal) ||
+                cmbOpenAIReasoningEffort.SelectedIndex != GetOpenAIReasoningEffortIndex(settings.OpenAIReasoningEffort))
             {
                 return true;
             }
 
             foreach (var preset in NotificationPresets.All)
             {
-                settings.StandardTips.TryGetValue(preset.Key, out bool isEnabled);
-                if (presetCheckBoxes[preset.Key].Checked != isEnabled)
+                settings.StandardTips.TryGetValue(preset.Key, out bool enabled);
+                if (presetCheckBoxes[preset.Key].Checked != enabled)
                 {
                     return true;
                 }
@@ -681,13 +703,13 @@ namespace CgLogViewer
         {
             if (string.IsNullOrWhiteSpace(selectedLogPath) || !CgLogHandler.ValidationPath(selectedLogPath))
             {
-                MessageBox.Show(this, "先に有効なゲームフォルダを選択してください。", "設定を保存できません", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show(this, "先に正しいゲームフォルダを選択してください。", "設定を保存できません", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return false;
             }
 
             if (chkDiscord.Checked && string.IsNullOrWhiteSpace(txtDiscordWebhookUrl.Text))
             {
-                MessageBox.Show(this, "Discord 送信を有効にする場合は Webhook URL を入力してください。", "Webhook URL 未設定", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show(this, "Discord 通知を使う場合は Webhook URL を入力してください。", "Webhook URL 未設定", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return false;
             }
 
@@ -702,16 +724,17 @@ namespace CgLogViewer
             settings.SetDeepLApiKey(txtDeepLApiKey.Text);
             settings.SetGoogleApiKey(txtGoogleApiKey.Text);
             settings.SetOpenAIApiKey(txtOpenAIApiKey.Text);
+            settings.SetOpenAIReasoningEffort(GetSelectedOpenAIReasoningEffort());
 
             foreach (var preset in NotificationPresets.All)
             {
                 settings.SetStandardTip(preset.Key, presetCheckBoxes[preset.Key].Checked);
             }
 
-            var currentKeywords = settings.CustomizeTips.ToList();
-            foreach (var keyword in currentKeywords)
+            var existing = settings.CustomizeTips.ToList();
+            foreach (var item in existing)
             {
-                settings.RemoveCustmizeTip(keyword);
+                settings.RemoveCustmizeTip(item);
             }
 
             foreach (var item in GetCurrentCustomKeywords())
@@ -753,29 +776,57 @@ namespace CgLogViewer
             }
         }
 
+        OpenAIReasoningEffort GetSelectedOpenAIReasoningEffort()
+        {
+            switch (cmbOpenAIReasoningEffort.SelectedIndex)
+            {
+                case 0:
+                    return OpenAIReasoningEffort.Low;
+                case 2:
+                    return OpenAIReasoningEffort.High;
+                default:
+                    return OpenAIReasoningEffort.Medium;
+            }
+        }
+
+        int GetOpenAIReasoningEffortIndex(OpenAIReasoningEffort value)
+        {
+            switch (value)
+            {
+                case OpenAIReasoningEffort.Low:
+                    return 0;
+                case OpenAIReasoningEffort.High:
+                    return 2;
+                default:
+                    return 1;
+            }
+        }
+
         void UpdateTranslationProviderUi()
         {
             var provider = GetSelectedTranslationProvider();
             txtDeepLApiKey.Visible = provider == TranslationProvider.DeepL;
             txtGoogleApiKey.Visible = provider == TranslationProvider.Google;
             txtOpenAIApiKey.Visible = provider == TranslationProvider.OpenAI;
+            lblOpenAIReasoningEffort.Visible = provider == TranslationProvider.OpenAI;
+            cmbOpenAIReasoningEffort.Visible = provider == TranslationProvider.OpenAI;
+            btnUploadGlossary.Visible = provider == TranslationProvider.DeepL;
 
             switch (provider)
             {
                 case TranslationProvider.Google:
                     lblTranslationKey.Text = "Google Cloud Translation API キー";
-                    lblTranslationHint.Text = "ログカードの「翻訳」ボタンを押した時だけ Google Cloud Translation API で日本語に翻訳します。";
+                    lblTranslationHint.Text = "Google はローカル辞書を使って翻訳に反映します。";
                     break;
                 case TranslationProvider.OpenAI:
                     lblTranslationKey.Text = "OpenAI API キー";
-                    lblTranslationHint.Text = "ログカードの「翻訳」ボタンを押した時だけ OpenAI Responses API と gpt-5-mini で日本語に翻訳します。";
+                    lblTranslationHint.Text = "reasoning_effort に応じて OpenAI 翻訳のタイムアウトを調整します。";
                     break;
                 default:
                     lblTranslationKey.Text = "DeepL API Free キー";
-                    lblTranslationHint.Text = "ログカードの「翻訳」ボタンを押した時だけ DeepL API Free で日本語に翻訳します。";
+                    lblTranslationHint.Text = "DeepL はローカル辞書に加えて、用語集アップロードも利用できます。";
                     break;
             }
         }
-
     }
 }

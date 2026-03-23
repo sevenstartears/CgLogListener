@@ -20,7 +20,7 @@ namespace CgLogViewer
 
         public TranslationProvider Provider => TranslationProvider.Google;
 
-        public async Task<string> TranslateToJapaneseAsync(string authKey, string text, CancellationToken cancellationToken)
+        public async Task<string> TranslateToJapaneseAsync(string authKey, string text, CancellationToken cancellationToken, OpenAIReasoningEffort reasoningEffort)
         {
             if (string.IsNullOrWhiteSpace(authKey))
             {
@@ -32,12 +32,15 @@ namespace CgLogViewer
                 return string.Empty;
             }
 
+            var maskResult = TranslationDictionaryMasker.Mask(text, TranslationDictionaryStore.Instance.LoadEntries());
+            string requestText = maskResult.MaskedText;
+
             string url = $"https://translation.googleapis.com/language/translate/v2?key={HttpUtility.UrlEncode(authKey.Trim())}";
             using (var request = new HttpRequestMessage(HttpMethod.Post, url))
             {
                 request.Content = new FormUrlEncodedContent(new[]
                 {
-                    new KeyValuePair<string, string>("q", text),
+                    new KeyValuePair<string, string>("q", requestText),
                     new KeyValuePair<string, string>("target", "ja"),
                     new KeyValuePair<string, string>("format", "text"),
                 });
@@ -54,10 +57,10 @@ namespace CgLogViewer
                     var translated = payload?.data?.translations?[0]?.translatedText;
                     if (string.IsNullOrWhiteSpace(translated))
                     {
-                        throw new InvalidOperationException("Google 翻訳から結果を取得できませんでした。");
+                        throw new InvalidOperationException("Google から翻訳結果を取得できませんでした。");
                     }
 
-                    return HttpUtility.HtmlDecode(translated).Trim();
+                    return TranslationDictionaryMasker.Restore(HttpUtility.HtmlDecode(translated).Trim(), maskResult.PlaceholderMap);
                 }
             }
         }
@@ -87,14 +90,14 @@ namespace CgLogViewer
                 : fallback;
         }
 
-        sealed class GoogleTranslateResponse
-        {
-            public GoogleTranslateData data { get; set; }
-        }
-
         sealed class GoogleTranslateData
         {
             public GoogleTranslateItem[] translations { get; set; }
+        }
+
+        sealed class GoogleTranslateResponse
+        {
+            public GoogleTranslateData data { get; set; }
         }
 
         sealed class GoogleTranslateItem

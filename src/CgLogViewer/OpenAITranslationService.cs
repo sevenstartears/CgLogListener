@@ -1,6 +1,6 @@
 using System;
-using System.Collections.Generic;
 using System.Collections;
+using System.Collections.Generic;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text;
@@ -21,12 +21,12 @@ namespace CgLogViewer
 
         public OpenAITranslationService()
         {
-            httpClient.Timeout = TimeSpan.FromSeconds(30);
+            httpClient.Timeout = Timeout.InfiniteTimeSpan;
         }
 
         public TranslationProvider Provider => TranslationProvider.OpenAI;
 
-        public async Task<string> TranslateToJapaneseAsync(string authKey, string text, CancellationToken cancellationToken)
+        public async Task<string> TranslateToJapaneseAsync(string authKey, string text, CancellationToken cancellationToken, OpenAIReasoningEffort reasoningEffort)
         {
             if (string.IsNullOrWhiteSpace(authKey))
             {
@@ -38,11 +38,23 @@ namespace CgLogViewer
                 return string.Empty;
             }
 
+            var dictionaryEntries = TranslationDictionaryStore.Instance.LoadEntries();
+            var maskResult = TranslationDictionaryMasker.Mask(text, dictionaryEntries);
+            string instructions = TranslationInstructions;
+            if (maskResult.MatchedEntries.Count > 0)
+            {
+                instructions += " Preserve any token formatted like __CGTERM_0000__ exactly as-is.";
+            }
+
             var requestBody = new Dictionary<string, object>
             {
                 ["model"] = Model,
-                ["instructions"] = TranslationInstructions,
-                ["input"] = text,
+                ["instructions"] = instructions,
+                ["input"] = maskResult.MaskedText,
+                ["reasoning"] = new Dictionary<string, object>
+                {
+                    ["effort"] = OpenAIReasoningEffortHelper.ToApiValue(reasoningEffort)
+                },
             };
 
             using (var request = new HttpRequestMessage(HttpMethod.Post, ResponsesUri))
@@ -50,21 +62,26 @@ namespace CgLogViewer
                 request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", authKey.Trim());
                 request.Content = new StringContent(serializer.Serialize(requestBody), Encoding.UTF8, "application/json");
 
-                using (var response = await httpClient.SendAsync(request, cancellationToken).ConfigureAwait(false))
+                using (var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken))
                 {
-                    string json = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
-                    if (!response.IsSuccessStatusCode)
-                    {
-                        throw new InvalidOperationException(GetErrorMessage(json, response.ReasonPhrase));
-                    }
+                    timeoutCts.CancelAfter(OpenAIReasoningEffortHelper.GetTimeout(reasoningEffort));
 
-                    string translated = ExtractTranslatedText(json);
-                    if (string.IsNullOrWhiteSpace(translated))
+                    using (var response = await httpClient.SendAsync(request, timeoutCts.Token).ConfigureAwait(false))
                     {
-                        throw new InvalidOperationException("OpenAI から翻訳結果を取得できませんでした。");
-                    }
+                        string json = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+                        if (!response.IsSuccessStatusCode)
+                        {
+                            throw new InvalidOperationException(GetErrorMessage(json, response.ReasonPhrase));
+                        }
 
-                    return translated.Trim();
+                        string translated = ExtractTranslatedText(json);
+                        if (string.IsNullOrWhiteSpace(translated))
+                        {
+                            throw new InvalidOperationException("OpenAI から翻訳結果を取得できませんでした。");
+                        }
+
+                        return TranslationDictionaryMasker.Restore(translated.Trim(), maskResult.PlaceholderMap);
+                    }
                 }
             }
         }
@@ -150,8 +167,6 @@ namespace CgLogViewer
                 {
                     AppendOutputText(item, fragments);
                 }
-
-                return;
             }
         }
 

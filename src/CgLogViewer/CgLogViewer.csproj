@@ -76,6 +76,7 @@
     <Compile Include="CgLogHandler.cs" />
     <Compile Include="DeepLTranslationService.cs" />
     <Compile Include="DisplayedLogGroup.cs" />
+    <Compile Include="DeepLGlossaryManager.cs" />
     <Compile Include="DiscordWebhookNotifier.cs" />
     <Compile Include="FoodCooldownEntry.cs" />
     <Compile Include="FoodCooldownTracker.cs" />
@@ -93,8 +94,15 @@
     <Compile Include="NotificationPresets.cs" />
     <Compile Include="NpcDialogueBridge.cs" />
     <Compile Include="NpcDialogueReader.cs" />
+    <Compile Include="OpenAIReasoningEffort.cs" />
     <Compile Include="OpenAITranslationService.cs" />
     <Compile Include="TranslationProvider.cs" />
+    <Compile Include="TranslationDictionaryEntry.cs" />
+    <Compile Include="TranslationDictionaryStore.cs" />
+    <Compile Include="TranslationDictionaryMasker.cs" />
+    <Compile Include="FormTranslationDictionaryEditor.cs">
+      <SubType>Form</SubType>
+    </Compile>
     <Compile Include="FormMain.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -145,6 +153,9 @@
     <Content Include="icon.ico" />
     <Content Include="sound.wav">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="translation_dictionary.tsv">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
   </ItemGroup>
   <ItemGroup>

@@ -21,7 +21,7 @@ namespace CgLogViewer
 
         public TranslationProvider Provider => TranslationProvider.DeepL;
 
-        public async Task<string> TranslateToJapaneseAsync(string authKey, string text, CancellationToken cancellationToken)
+        public async Task<string> TranslateToJapaneseAsync(string authKey, string text, CancellationToken cancellationToken, OpenAIReasoningEffort reasoningEffort)
         {
             if (string.IsNullOrWhiteSpace(authKey))
             {
@@ -33,16 +33,29 @@ namespace CgLogViewer
                 return string.Empty;
             }
 
+            var settings = Settings.GetInstance();
+            bool useGlossary = !string.IsNullOrWhiteSpace(settings.DeepLGlossaryId);
+            var maskResult = useGlossary
+                ? new TranslationDictionaryMaskResult { MaskedText = text }
+                : TranslationDictionaryMasker.Mask(text, TranslationDictionaryStore.Instance.LoadEntries());
+            string requestText = maskResult.MaskedText;
+
             using (var request = new HttpRequestMessage(HttpMethod.Post, TranslateUri))
             {
                 request.Headers.TryAddWithoutValidation("Authorization", $"DeepL-Auth-Key {authKey.Trim()}");
-                request.Content = new FormUrlEncodedContent(new[]
+                var formValues = new List<KeyValuePair<string, string>>
                 {
-                    new KeyValuePair<string, string>("text", text),
+                    new KeyValuePair<string, string>("text", requestText),
                     new KeyValuePair<string, string>("target_lang", "JA"),
                     new KeyValuePair<string, string>("preserve_formatting", "1"),
                     new KeyValuePair<string, string>("split_sentences", "0"),
-                });
+                };
+                if (useGlossary)
+                {
+                    formValues.Add(new KeyValuePair<string, string>("source_lang", "ZH"));
+                    formValues.Add(new KeyValuePair<string, string>("glossary_id", settings.DeepLGlossaryId));
+                }
+                request.Content = new FormUrlEncodedContent(formValues);
 
                 using (var response = await httpClient.SendAsync(request, cancellationToken).ConfigureAwait(false))
                 {
@@ -59,7 +72,7 @@ namespace CgLogViewer
                         throw new InvalidOperationException("DeepL から翻訳結果を取得できませんでした。");
                     }
 
-                    return translated.Trim();
+                    return TranslationDictionaryMasker.Restore(translated.Trim(), maskResult.PlaceholderMap);
                 }
             }
         }
